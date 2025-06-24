@@ -258,9 +258,10 @@ fn main() -> io::Result<()> {
         // we can't use while-let here, because that would keep NEW_TASKS locked in the loop body.
         // See https://fasterthanli.me/articles/a-rust-match-made-in-hell.
         loop {
+            let a = &NEW_TASKS;
             let Some(mut task) = NEW_TASKS.lock().unwrap().pop() else {
                 break;
-            };
+            };  
             // Poll each new task now, instead of waiting for the next iteration of the main loop,
             // to let them register wakeups. Drop the ones that return Ready. This poll can also
             // spawn more tasks, so it's important that NEW_TASKS isn't locked here.
@@ -270,6 +271,7 @@ fn main() -> io::Result<()> {
         }
         // Some tasks might wake other tasks. Re-poll if the AwakeFlag has been set. Polling
         // futures that aren't ready yet is inefficient but allowed.
+        // ??
         if awake_flag.check_and_clear() {
             continue;
         }

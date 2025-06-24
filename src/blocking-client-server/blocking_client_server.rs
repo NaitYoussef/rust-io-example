@@ -19,6 +19,7 @@ fn server_main(listener: TcpListener) -> io::Result<()> {
     }
 }
 
+// TODO add client durations
 fn client_main() -> io::Result<()> {
     let mut socket = TcpStream::connect("localhost:8000")?;
     io::copy(&mut socket, &mut io::stdout())?;
