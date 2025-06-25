@@ -34,15 +34,15 @@ fn main() -> io::Result<()> {
         for pfd in &poll_fds {
             if pfd.fd == listener.as_raw_fd() && (pfd.revents & libc::POLLIN) != 0 {
                 match listener.accept() {
-                    Ok((clientStream, addr)) => {
+                    Ok((client_stream, addr)) => {
                         println!("Accepted connection from {:?}", addr);
                         let clientfd = pollfd {
-                            fd: clientStream.as_raw_fd(),
+                            fd: client_stream.as_raw_fd(),
                             events: libc::POLLIN,
                             revents: 0,
                         };
                         // Ajoute ce client à poll pour surveiller ses données
-                        client_streams.insert(clientStream.as_raw_fd(), clientStream);
+                        client_streams.insert(client_stream.as_raw_fd(), client_stream);
                         new_clients.push(clientfd);
                     }
                     Err(e) => {
@@ -51,9 +51,9 @@ fn main() -> io::Result<()> {
                 }
             } else if (pfd.revents & libc::POLLIN) != 0 {
                 let mut buf = [0u8; 1024];
-                let mut clientStream = client_streams.get(&pfd.fd.as_raw_fd()).unwrap();
+                let mut client_stream = client_streams.get(&pfd.fd.as_raw_fd()).unwrap();
                 unsafe {
-                    match clientStream.read(&mut buf) {
+                    match client_stream.read(&mut buf) {
                         Ok(0) => {
                             // Le client a fermé la connexion
                             println!("Client {} disconnected", pfd.fd.as_raw_fd());
@@ -67,7 +67,7 @@ fn main() -> io::Result<()> {
                                 pfd.fd.as_raw_fd(),
                                 String::from_utf8_lossy(&buf[..n])
                             );
-                            clientStream.write("Hello you\n".as_bytes()).unwrap();
+                            client_stream.write("Hello you\n".as_bytes()).unwrap();
                         }
                         Err(e) => {
                             // Erreur de lecture => ferme le client
