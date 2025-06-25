@@ -41,7 +41,7 @@ fn main() -> io::Result<()> {
                             events: libc::POLLIN,
                             revents: 0,
                         };
-                        // 12️⃣ Ajoute ce client à poll pour surveiller ses données
+                        // Ajoute ce client à poll pour surveiller ses données
                         client_streams.insert(clientStream.as_raw_fd(), clientStream);
                         new_clients.push(clientfd);
                     }
@@ -55,24 +55,22 @@ fn main() -> io::Result<()> {
                 unsafe {
                     match clientStream.read(&mut buf) {
                         Ok(0) => {
-                            // 15️⃣ Le client a fermé la connexion
+                            // Le client a fermé la connexion
                             println!("Client {} disconnected", pfd.fd.as_raw_fd());
                             client_streams.remove(&pfd.fd.as_raw_fd());
                             finished_clients.push(pfd.fd.as_raw_fd());
                         }
                         Ok(n) => {
-                            // 16️⃣ On a reçu des données => les afficher + renvoyer un écho
+                            // On a reçu des données => les afficher + renvoyer un écho
                             println!(
                                 "Received from {}: {}",
                                 pfd.fd.as_raw_fd(),
                                 String::from_utf8_lossy(&buf[..n])
                             );
-                            clientStream.write("Hello you".as_bytes()).unwrap();
-                            //client_streams.remove(&pfd.fd.as_raw_fd());
-                            //finished_clients.push(pfd.fd.as_raw_fd());
+                            clientStream.write("Hello you\n".as_bytes()).unwrap();
                         }
                         Err(e) => {
-                            // 17️⃣ Erreur de lecture => ferme le client
+                            // Erreur de lecture => ferme le client
                             println!("Read error on {}: {:?}", pfd.fd.as_raw_fd(), e);
                             client_streams.remove(&pfd.fd.as_raw_fd());
                             finished_clients.push(pfd.fd.as_raw_fd())
