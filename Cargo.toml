@@ -4,12 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "blocking-client_server"
-path = "src/blocking-client-server/blocking_client_server.rs"
+name = "blocking-server"
+path = "src/blocking-server/blocking_server.rs"
 
 [[bin]]
-name = "blocking-client"
-path = "src/poll_client_server/poll_client_server.rs"
+name = "poll-server"
+path = "src/poll_server/poll_server.rs"
+
+[[bin]]
+name = "kqueue-server"
+path = "src/kqueue_server/kqueue_server.rs"
 
 [[bin]]
 name = "poll-server-client"
@@ -17,3 +21,4 @@ path = "src/async-runtime/poll-async.rs"
 
 [dependencies]
 libc = "0.2.172"
+nix = { version = "0.30.1" , features = ["event"]}
