@@ -1,5 +1,5 @@
-use libc::pollfd;
-use nix::sys::event::{EvFlags, EventFilter, EventFlag, FilterFlag, KEvent, Kqueue};
+use libc::{close, pollfd};
+use nix::sys::event::{kqueue, EvFlags, EventFilter, FilterFlag, KEvent, Kqueue};
 use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
@@ -19,7 +19,7 @@ fn poll(fds: &mut Vec<pollfd>) {
 fn main() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
     listener.set_nonblocking(true)?;
-    let kq = nix::sys::event::kqueue().unwrap();
+    let kq = kqueue().unwrap();
     let changelist = [KEvent::new(
         listener.as_raw_fd() as usize,
         EventFilter::EVFILT_READ,
@@ -32,15 +32,16 @@ fn main() -> io::Result<()> {
     unsafe { Kqueue::kevent(&kq, &changelist, &mut [], None).unwrap(); }
 
     loop {
-        let mut events = [KEvent::new(0, EventFilter::EVFILT_READ, EventFlag::empty(), FilterFlag::empty(), 0, 0); 32];
-        let nev = Kqueue::kevent(&kq, &[], &mut events, None).unwrap();
+        // Valeur bidon just pour créer le tableau
+        let mut events = [KEvent::new(0, EventFilter::EVFILT_READ, EvFlags::empty(), FilterFlag::empty(), 0, 0); 32];
+        let nev = Kqueue::kevent(&kq, &[], &mut events, None)?;
         for i in 0..nev {
             let event = events[i];
             if event.ident() == listener.as_raw_fd() as usize {
                 // Nouvelle connexion
                 match listener.accept() {
                     Ok((stream, addr)) => {
-                        println!("Nouveau client : {}", addr);
+                        println!("Nouveau client : {} {}", addr, stream.as_raw_fd());
                         stream.set_nonblocking(true)?;
                         let fd = stream.as_raw_fd();
                         clients.insert(fd, stream);
@@ -66,11 +67,11 @@ fn main() -> io::Result<()> {
                     let mut buf = [0u8; 1024];
                     match stream.read(&mut buf) {
                         Ok(0) => {
-                            println!("Client déconnecté");
+                            println!("Client déconnecté {}", stream.as_raw_fd());
                             to_remove = true;
                         }
                         Ok(n) => {
-                            println!("Reçu : {}", String::from_utf8_lossy(&buf[..n]));
+                            println!("Reçu : {} from {}", String::from_utf8_lossy(&buf[..n]), stream.as_raw_fd());
                             stream.write_all(&buf[..n]).unwrap();
                         }
                         Err(e) => {
@@ -81,7 +82,6 @@ fn main() -> io::Result<()> {
                 }
 
                 if to_remove {
-                    clients.remove(&fd);
                     let ev = KEvent::new(
                         fd as usize,
                         EventFilter::EVFILT_READ,
@@ -91,6 +91,8 @@ fn main() -> io::Result<()> {
                         0,
                     );
                     Kqueue::kevent(&kq, &[ev], &mut [], None)?;
+                    clients.remove(&fd);
+                    unsafe { close(fd); }
                 }
             }
         }
