@@ -1,4 +1,4 @@
-use libc::pollfd;
+use libc::{close, pollfd};
 use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
@@ -70,6 +70,8 @@ fn main() -> io::Result<()> {
                             // Erreur de lecture => ferme le client
                             println!("Read error on {}: {:?}", pfd.fd.as_raw_fd(), e);
                             client_streams.remove(&pfd.fd.as_raw_fd());
+                            // Test this ligne just added
+                            close(pfd.fd.as_raw_fd());
                             finished_clients.push(pfd.fd.as_raw_fd())
                         }
                     }

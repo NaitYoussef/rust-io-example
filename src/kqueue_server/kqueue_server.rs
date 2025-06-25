@@ -1,4 +1,4 @@
-use libc::{close, pollfd};
+use libc::close;
 use nix::sys::event::{kqueue, EvFlags, EventFilter, FilterFlag, KEvent, Kqueue};
 use std::collections::HashMap;
 use std::io;
@@ -6,15 +6,6 @@ use std::io::prelude::*;
 use std::net::TcpListener;
 use std::os::fd::AsRawFd;
 
-fn poll(fds: &mut Vec<pollfd>) {
-    unsafe {
-        libc::poll(
-            fds.as_mut_ptr(),
-            fds.len() as libc::nfds_t,
-            -1 as libc::c_int,
-        );
-    }
-}
 
 fn main() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
