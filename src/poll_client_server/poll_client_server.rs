@@ -4,9 +4,6 @@ use std::io;
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::os::fd::AsRawFd;
-use std::sync::Mutex;
-
-static POLL_FDS: Mutex<Vec<pollfd>> = Mutex::new(Vec::new());
 
 fn poll(fds: &mut Vec<pollfd>) {
     unsafe {
