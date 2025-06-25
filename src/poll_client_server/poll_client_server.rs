@@ -16,10 +16,8 @@ fn poll(fds: &mut Vec<pollfd>) {
 }
 
 fn main() -> io::Result<()> {
-    // Open the listener first, to avoid racing against the server thread.
     let listener = TcpListener::bind("0.0.0.0:8000")?;
     listener.set_nonblocking(true)?;
-    // Start the server on a background thread.
     let pollfd = pollfd {
         fd: listener.as_raw_fd(),
         events: libc::POLLIN,
@@ -41,7 +39,6 @@ fn main() -> io::Result<()> {
                             events: libc::POLLIN,
                             revents: 0,
                         };
-                        // Ajoute ce client à poll pour surveiller ses données
                         client_streams.insert(client_stream.as_raw_fd(), client_stream);
                         new_clients.push(clientfd);
                     }
