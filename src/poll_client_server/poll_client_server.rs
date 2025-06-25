@@ -1,79 +1,21 @@
+use libc::pollfd;
+use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
-use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::net::TcpListener;
 use std::os::fd::AsRawFd;
 use std::sync::Mutex;
-use std::task::Poll;
-use std::thread;
-use std::time::Duration;
 
-static POLL_FDS: Mutex<Vec<libc::pollfd>> = Mutex::new(Vec::new());
+static POLL_FDS: Mutex<Vec<pollfd>> = Mutex::new(Vec::new());
 
-unsafe fn poll(
-    fd: &impl AsRawFd,
-    events: libc::c_short,
-) {
-    let mut pollfd = libc::pollfd {
-        fd: fd.as_raw_fd(),
-        events,
-        revents: 0,
-    };
-    libc::poll(
-        &mut pollfd,
-        1 as libc::nfds_t,
-        10 as libc::c_int,
-    );
-}
-
-fn register_pollfd(
-    fd: &impl AsRawFd,
-    events: libc::c_short,
-) {
-    let mut poll_fds = POLL_FDS.lock().unwrap();
-    poll_fds.push(libc::pollfd {
-        fd: fd.as_raw_fd(),
-        events,
-        revents: 0,
-    });
-}
-
-async fn accept(
-    listener: &mut TcpListener,
-) -> io::Result<(TcpStream, SocketAddr)> {
-    std::future::poll_fn(|context| match listener.accept() {
-        Ok((stream, addr)) => {
-            stream.set_nonblocking(true)?;
-            Poll::Ready(Ok((stream, addr)))
-        }
-        Err(e) if e.kind() == io::ErrorKind::WouldBlock => unsafe {
-            register_pollfd(listener, libc::POLLIN);
-            Poll::Pending
-        }
-        Err(e) => Poll::Ready(Err(e)),
-    })
-        .await
-}
-
-fn server_main(mut listener: TcpListener) -> io::Result<()> {
-    let mut n = 1;
-    loop {
-        let (mut socket, _) = accept(&mut listener)?;
-        // Using format! instead of write! avoids breaking up lines across multiple writes. This is
-        // easier than doing line buffering on the client side.
-        let start_msg = format!("start {n}\n");
-        socket.write_all(start_msg.as_bytes())?;
-        thread::sleep(Duration::from_secs(1));
-        let end_msg = format!("end {n}\n");
-        socket.write_all(end_msg.as_bytes())?;
-        n += 1;
+fn poll(fds: &mut Vec<pollfd>) {
+    unsafe {
+        libc::poll(
+            fds.as_mut_ptr(),
+            fds.len() as libc::nfds_t,
+            -1 as libc::c_int,
+        );
     }
-}
-
-// TODO add client durations
-fn client_main() -> io::Result<()> {
-    let mut socket = TcpStream::connect("localhost:8000")?;
-    io::copy(&mut socket, &mut io::stdout())?;
-    Ok(())
 }
 
 fn main() -> io::Result<()> {
@@ -81,14 +23,70 @@ fn main() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
     listener.set_nonblocking(true)?;
     // Start the server on a background thread.
-    thread::spawn(|| server_main(listener).unwrap());
-    // Run ten clients on ten different threads.
-    let mut client_handles = Vec::new();
-    for _ in 1..=10 {
-        client_handles.push(thread::spawn(client_main));
+    let pollfd = pollfd {
+        fd: listener.as_raw_fd(),
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    let mut poll_fds = vec![pollfd];
+    let mut client_streams = HashMap::new();
+    let mut new_clients = Vec::new();
+    let mut finished_clients = Vec::new();
+    loop {
+        poll(&mut poll_fds);
+        for pfd in &poll_fds {
+            if pfd.fd == listener.as_raw_fd() && (pfd.revents & libc::POLLIN) != 0 {
+                match listener.accept() {
+                    Ok((clientStream, addr)) => {
+                        println!("Accepted connection from {:?}", addr);
+                        let clientfd = pollfd {
+                            fd: clientStream.as_raw_fd(),
+                            events: libc::POLLIN,
+                            revents: 0,
+                        };
+                        // 12️⃣ Ajoute ce client à poll pour surveiller ses données
+                        client_streams.insert(clientStream.as_raw_fd(), clientStream);
+                        new_clients.push(clientfd);
+                    }
+                    Err(e) => {
+                        println!("Accept error: {:?}", e);
+                    }
+                }
+            } else if (pfd.revents & libc::POLLIN) != 0 {
+                let mut buf = [0u8; 1024];
+                let mut clientStream = client_streams.get(&pfd.fd.as_raw_fd()).unwrap();
+                unsafe {
+                    match clientStream.read(&mut buf) {
+                        Ok(0) => {
+                            // 15️⃣ Le client a fermé la connexion
+                            println!("Client {} disconnected", pfd.fd.as_raw_fd());
+                            client_streams.remove(&pfd.fd.as_raw_fd());
+                            finished_clients.push(pfd.fd.as_raw_fd());
+                        }
+                        Ok(n) => {
+                            // 16️⃣ On a reçu des données => les afficher + renvoyer un écho
+                            println!(
+                                "Received from {}: {}",
+                                pfd.fd.as_raw_fd(),
+                                String::from_utf8_lossy(&buf[..n])
+                            );
+                            clientStream.write("Hello you".as_bytes()).unwrap();
+                            //client_streams.remove(&pfd.fd.as_raw_fd());
+                            //finished_clients.push(pfd.fd.as_raw_fd());
+                        }
+                        Err(e) => {
+                            // 17️⃣ Erreur de lecture => ferme le client
+                            println!("Read error on {}: {:?}", pfd.fd.as_raw_fd(), e);
+                            client_streams.remove(&pfd.fd.as_raw_fd());
+                            finished_clients.push(pfd.fd.as_raw_fd())
+                        }
+                    }
+                }
+            }
+        }
+        poll_fds.retain(|fd| !finished_clients.contains(&fd.fd.as_raw_fd()));
+        poll_fds.extend(new_clients.clone());
+        new_clients.clear();
+        finished_clients.clear();
     }
-    for handle in client_handles {
-        handle.join().unwrap()?;
-    }
-    Ok(())
 }
