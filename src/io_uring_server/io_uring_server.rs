@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use io_uring::{opcode, types, IoUring};
 use std::net::TcpListener;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
+use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 fn main() -> std::io::Result<()> {
@@ -14,11 +16,11 @@ fn main() -> std::io::Result<()> {
 
     // On soumet un accept dès le début
     submit_accept(&mut ring, listener_fd);
+    let buffers: Arc<Mutex<HashMap<i32, Arc<Mutex<Vec<u8>>>>>> = Arc::new(Mutex::new(HashMap::new()));
 
     loop {
         ring.submit_and_wait(1).unwrap();
         let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("get millis error");
-        println!("Something happend {}", now.as_millis());
         let mut need_accept = false;
         let mut to_read = vec![];
         {
@@ -46,14 +48,16 @@ fn main() -> std::io::Result<()> {
                     // Soumettre une lecture sur le client
                     to_read.push(client_fd);
                     // submit_read(&mut ring, client_fd);
-
+                    let buf = Arc::new(Mutex::new(vec![0u8; 512]));
+                    buffers.lock().unwrap().insert(client_fd, buf.clone());
                     need_accept = true;
                     // On resoumet un accept pour les prochains clients
                     //submit_accept(&mut ring, listener_fd);
-                } else if user_data == 2 {
+                } else if user_data >= 2 {
                     if result == 0 {
                         println!("Client déconnecté");
                         // Rien à faire ici, le client a fermé la connexion
+                        buffers.lock().unwrap().remove(&(result as i32));
                     } else if result < 0 {
                         eprintln!(
                             "Erreur lors de la lecture: {}",
@@ -61,10 +65,13 @@ fn main() -> std::io::Result<()> {
                         );
                     } else {
                         let n = result as usize;
-                        println!("Reçu {} octets", n);
+                        let fd = (user_data - 2) as i32; // petite astuce pour récupérer le fd si tu l’avais stocké
+                        let guard = buffers.lock().unwrap();
+                        let buf_mutex = guard.get(&fd).unwrap();
+                        let buf = buf_mutex.lock().unwrap();
+                        println!("Received data is {}", String::from_utf8_lossy(&buf[..n]));
                         // Ici tu pourrais écrire au client si tu veux
 
-                        let fd = cqe.flags() as i32; // petite astuce pour récupérer le fd si tu l’avais stocké
                         to_read.push(fd);
                         //submit_read(&mut ring, fd);  // relancer une lecture sur ce fd
                     }
@@ -76,7 +83,9 @@ fn main() -> std::io::Result<()> {
             submit_accept(&mut ring, listener_fd);
         }
         for fd in to_read {
-            submit_read(&mut ring, fd);
+            if let Some(buf) = buffers.lock().unwrap().get(&fd) {
+                submit_read(&mut ring, fd, buf.clone());
+            }
         }
     }
 }
@@ -95,20 +104,21 @@ fn submit_accept(ring: &mut IoUring, listener_fd: i32) {
 }
 
 // Soumet un read
-fn submit_read(ring: &mut IoUring, client_fd: i32) {
-    static mut BUF: [u8; 512] = [0; 512];
-
-    let read_e = opcode::Read::new(
+fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: Arc<Mutex<Vec<u8>>>) {
+    let mut buf_lock = buffer.lock().unwrap();
+    let read = opcode::Read::new(
         types::Fd(client_fd),
-        unsafe { BUF.as_mut_ptr() },
-        BUF.len() as _,
-    )
-    .build()
-    .user_data(2); // On marque cet event comme étant un read
+        buf_lock.as_mut_ptr(),
+        buf_lock.len() as _,
+    );
+    let read_e = read
+        .build()
+        .user_data((2 + client_fd) as u64);
+
+    // Libère explicitement le lock avant le push
+    drop(buf_lock);
 
     unsafe {
-        ring.submission()
-            .push(&read_e)
-            .expect("soumission read échouée");
+        ring.submission().push(&read_e).expect("soumission read échouée");
     }
 }
