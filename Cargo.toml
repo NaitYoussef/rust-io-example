@@ -16,9 +16,14 @@ name = "kqueue-server"
 path = "src/kqueue_server/kqueue_server.rs"
 
 [[bin]]
-name = "poll-server-client"
+name = "async-runtime"
 path = "src/async-runtime/poll-async.rs"
+
+[[bin]]
+name = "io-uring-server"
+path = "src/io_uring_server/io_uring_server.rs"
 
 [dependencies]
 libc = "0.2.172"
 nix = { version = "0.30.1" , features = ["event"]}
+io-uring = "0.7.8"
