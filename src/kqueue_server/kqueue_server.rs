@@ -1,4 +1,4 @@
-use libc::close;
+use libc::{close, pollfd};
 use nix::sys::event::{kqueue, EvFlags, EventFilter, FilterFlag, KEvent, Kqueue};
 use std::collections::HashMap;
 use std::io;
@@ -21,7 +21,7 @@ fn main() -> io::Result<()> {
     )];
     let mut clients = HashMap::new();
     unsafe { Kqueue::kevent(&kq, &changelist, &mut [], None).unwrap(); }
-
+    println!("Serveur kqueue démarré !");
     loop {
         // Valeur bidon just pour créer le tableau
         let mut events = [KEvent::new(0, EventFilter::EVFILT_READ, EvFlags::empty(), FilterFlag::empty(), 0, 0); 32];
@@ -31,7 +31,8 @@ fn main() -> io::Result<()> {
             if event.ident() == listener.as_raw_fd() as usize {
                 // Nouvelle connexion
                 match listener.accept() {
-                    Ok((stream, addr)) => {
+                    Ok((mut stream, addr)) => {
+                        stream.write_all("Hello from kqueue server \n".to_string().as_bytes())?;
                         println!("Nouveau client : {} {}", addr, stream.as_raw_fd());
                         stream.set_nonblocking(true)?;
                         let fd = stream.as_raw_fd();

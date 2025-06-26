@@ -27,19 +27,21 @@ fn main() -> io::Result<()> {
     let mut client_streams = HashMap::new();
     let mut new_clients = Vec::new();
     let mut finished_clients = Vec::new();
+    println!("Serveur poll démarré !");
     loop {
         poll(&mut poll_fds);
         for pfd in &poll_fds {
-            if pfd.fd == listener.as_raw_fd() && (pfd.revents & libc::POLLIN) != 0 {
+            if (pfd.revents & libc::POLLIN) != 0 && pfd.fd == listener.as_raw_fd() {
                 match listener.accept() {
-                    Ok((client_stream, addr)) => {
+                    Ok((mut stream, addr)) => {
+                        stream.write_all("Hello from poll server \n".to_string().as_bytes())?;
                         println!("Accepted connection from {:?}", addr);
                         let clientfd = pollfd {
-                            fd: client_stream.as_raw_fd(),
+                            fd: stream.as_raw_fd(),
                             events: libc::POLLIN,
                             revents: 0,
                         };
-                        client_streams.insert(client_stream.as_raw_fd(), client_stream);
+                        client_streams.insert(stream.as_raw_fd(), stream);
                         new_clients.push(clientfd);
                     }
                     Err(e) => {
