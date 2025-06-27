@@ -1,10 +1,9 @@
-use std::collections::HashMap;
 use io_uring::{opcode, types, IoUring};
+use std::collections::HashMap;
 use std::net::TcpListener;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
 use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
 
 fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
@@ -17,12 +16,12 @@ fn main() -> std::io::Result<()> {
     // On soumet un accept dès le début
     submit_accept(&mut ring, listener_fd);
     let buffers: Arc<Mutex<HashMap<i32, Arc<Mutex<Vec<u8>>>>>> = Arc::new(Mutex::new(HashMap::new()));
-
     loop {
         ring.submit_and_wait(1).unwrap();
-        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("get millis error");
         let mut need_accept = false;
+        let mut to_write = vec![];
         let mut to_read = vec![];
+        let mut new_clients = vec![];
         {
             let mut completions = ring.completion();
             while let Some(cqe) = completions.next() {
@@ -44,20 +43,20 @@ fn main() -> std::io::Result<()> {
 
                     let client_fd = result;
                     println!("Nouveau client connecté: fd={}", client_fd);
-
+                    new_clients.push(client_fd);
                     // Soumettre une lecture sur le client
-                    to_read.push(client_fd);
+                    // to_read.push(client_fd);
                     // submit_read(&mut ring, client_fd);
                     let buf = Arc::new(Mutex::new(vec![0u8; 512]));
                     buffers.lock().unwrap().insert(client_fd, buf.clone());
                     need_accept = true;
                     // On resoumet un accept pour les prochains clients
                     //submit_accept(&mut ring, listener_fd);
-                } else if user_data >= 2 {
+                } else if user_data >= 2 && user_data <= 1000 {
                     if result == 0 {
-                        println!("Client déconnecté");
+                        println!("Client déconnecté {}", &((user_data - 2) as i32));
                         // Rien à faire ici, le client a fermé la connexion
-                        buffers.lock().unwrap().remove(&(result as i32));
+                        buffers.lock().unwrap().remove(&((user_data - 2) as i32));
                     } else if result < 0 {
                         eprintln!(
                             "Erreur lors de la lecture: {}",
@@ -71,12 +70,24 @@ fn main() -> std::io::Result<()> {
                         let buf = buf_mutex.lock().unwrap();
                         println!("Received data is {}", String::from_utf8_lossy(&buf[..n]));
                         // Ici tu pourrais écrire au client si tu veux
-
-                        to_read.push(fd);
+                        to_write.push(fd);
+                        //to_read.push(fd);
                         //submit_read(&mut ring, fd);  // relancer une lecture sur ce fd
                     }
+                } else if user_data >= 1000 {
+                    let client_fd = user_data - 1000;
+                    println!("Écriture terminée sur fd={}", client_fd);
+                    to_read.push(client_fd as i32);
                 }
             }
+        }
+        for fd in new_clients.drain(..) {
+            let greetings = "Hello from io-uring server !\n";
+            submit_write(&mut ring, fd, greetings, greetings.len());
+        }
+        for fd in to_write.drain(..) {
+            let greetings = "Server got your message !\n";
+            submit_write(&mut ring, fd, greetings, greetings.len());
         }
         // Après avoir fini d’itérer :
         if need_accept {
@@ -87,6 +98,19 @@ fn main() -> std::io::Result<()> {
                 submit_read(&mut ring, fd, buf.clone());
             }
         }
+
+    }
+}
+
+fn submit_write(ring: &mut IoUring, fd: i32, buffer: &str, size: usize) {
+    let ptr = buffer.as_bytes().as_ptr();
+
+    let write_e = opcode::Write::new(types::Fd(fd), ptr, size as _)
+        .build()
+        .user_data((fd + 1000) as u64); // encode fd pour savoir à qui appartient l’opération
+
+    unsafe {
+        ring.submission().push(&write_e).expect("soumission write échouée");
     }
 }
 
