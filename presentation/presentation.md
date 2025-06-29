@@ -43,6 +43,42 @@ Everything is a file
 ===
 
 <!-- end_slide -->
+
+Exemple simple
+---
+
+``` bash
+cat hello.txt
+```
+
+``` bash 
+...
+openat(AT_FDCWD, "presentation/demo.txt", O_RDONLY) = 3
+...
+read(3, "Bonjour Paris JUG", 262144)    = 17
+write(1, "Bonjour Paris JUG", 17Bonjour Paris JUG)       = 17
+read(3, "", 262144)                     = 0
+...
+close(3)                                = 0
+close(1)                                = 0
+close(2)                                = 0
+```
+
+<!-- end_slide -->
+Objets linux représentés par un file descriptor
+---
+
+  * fichier
+  * fichier virtuel (/proc, ...)
+  * socket
+  * terminal (0, 1 et 2)
+  * timers
+  * signaux
+  * process
+  * pipe nommé
+  * ...
+
+<!-- end_slide -->
 Linux Virtual File System
 ---
 ```
@@ -112,7 +148,7 @@ Après ajout :
 API epoll, caractéristiques
 ---
 
-  * Api non posix (uniquement sou linux)
+  * Api non posix (uniquement sous linux)
   * intégré au kernel dans la version 2.5.44 (2002)
   * permet de surveiller plusieurs file descriptor
   * utilise une queue intégré au noyau pour gérer les évênements
@@ -172,9 +208,44 @@ Après suppression :
 ```
 
 <!-- end_slide -->
- API IO uring
+API io uring, caractéristiques
 ---
 
+  * Api non posix (uniquement sous linux)
+  * intégré au kernel dans la version 5.1 (2019)
+  * interface asynchrone permettant de manipuler les IO
+  * zero copy
+  * limite le nombre d'appel kernel
+
+<!-- end_slide -->
+ API IO uring (schéma)
+---
+```
++---------------------------------------------------------------------+
+|                              user space                             |
+|                                                                     |
+|                   +-------------------------------+                 |
+|                   |     read / write, liburing    |                 |
+|                   +-------------------------------+                 |
+|                        |                    ^                       |
+|                        v                    |                       |
+|        +-------------------+    +-------------------+               |
+|        | Submission Queue  |    | Completion Queue  |               |
+|        |   [SQE 1]         |    |   [CQE 1]         |               |
+|--------|   [SQE 2]         |----|   [CQE 2]         |---------------|
+|        |   [SQE 3]         |    |   [CQE 3]         |               |
+|        +-------------------+    +-------------------+               |
+|                |                        ^                           |
+|                |                        |                           |
+|                +----------+  +----------+                           |
+|                           |  |                                      |
+|                         +--------+                                  |
+|                         | readv  |                                  |
+|                         +--------+                                  |
+|                                                                     |
+|                        Kernel space                                 |
++---------------------------------------------------------------------+
+```
 <!-- end_slide -->
 
 Comparatif des performances
@@ -185,6 +256,11 @@ Comparatif des performances
 IO uring et l'écosytème java
 ---
 
+  * intégré via le projet panama
+  * disponible avec netty (4.2)
+    * vertx
+    * quarkus (experimental)
+    * micronaut
 
 <!-- end_slide -->
 
