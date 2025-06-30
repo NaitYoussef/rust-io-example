@@ -270,4 +270,5 @@ Conclusion
 <!-- end_slide -->
 
 Merci
+![](images/youssef.png)
 ===

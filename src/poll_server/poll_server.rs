@@ -21,7 +21,7 @@ fn poll(fds: &mut Vec<pollfd>) {
 fn main() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
     listener.set_nonblocking(true)?;
-    let poll_fd = createPoolFD(listener.as_raw_fd());
+    let poll_fd = create_pool_fd(listener.as_raw_fd());
     let mut connections = Connection::new(poll_fd);
     println!("Poll server started !");
     loop {
@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
                 match listener.accept() {
                     Ok((mut stream, addr)) => {
                         println!("Accepted connection from {:?}", addr);
-                        let client_fd = createPoolFD(stream.as_raw_fd());
+                        let client_fd = create_pool_fd(stream.as_raw_fd());
                         connections.accept_new_client(stream.as_raw_fd(), stream, client_fd);
                     }
                     Err(e) => {
@@ -52,7 +52,7 @@ fn main() -> io::Result<()> {
     }
 }
 
-fn createPoolFD(fd: RawFd) -> pollfd {
+fn create_pool_fd(fd: RawFd) -> pollfd {
     pollfd {
         fd: fd.as_raw_fd(),
         events: libc::POLLIN,

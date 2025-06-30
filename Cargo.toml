@@ -26,10 +26,6 @@ path = "src/kqueue_server/kqueue_server.rs"
 required-features = ["macos"]
 
 [[bin]]
-name = "async-runtime"
-path = "src/async-runtime/poll-async.rs"
-
-[[bin]]
 name = "io-uring-server"
 path = "src/io_uring_server/io_uring_server.rs"
 required-features = ["linux"]

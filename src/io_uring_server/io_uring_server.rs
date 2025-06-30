@@ -1,105 +1,74 @@
+mod client_socket;
+
+use crate::client_socket::{Buffer, Connection};
 use io_uring::{opcode, types, IoUring};
-use std::collections::HashMap;
 use std::net::TcpListener;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
-use std::sync::{Arc, Mutex};
+
+const ACCEPT_FLAG: u64 = 1;
 
 fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
     listener.set_nonblocking(true)?;
-    println!("Serveur io-uring démarré !");
+    println!("io_uring server started !");
+
+    let mut ring = IoUring::new(256)?;
 
     let listener_fd = listener.as_raw_fd();
-    let mut ring = IoUring::new(256).unwrap();
 
-    // On soumet un accept dès le début
     submit_accept(&mut ring, listener_fd);
-    let buffers: Arc<Mutex<HashMap<i32, Arc<Mutex<Vec<u8>>>>>> = Arc::new(Mutex::new(HashMap::new()));
+
+    let mut connections = Connection::new();
     loop {
-        ring.submit_and_wait(1).unwrap();
-        let mut need_accept = false;
-        let mut to_write = vec![];
-        let mut to_read = vec![];
-        let mut new_clients = vec![];
-        {
-            let mut completions = ring.completion();
-            while let Some(cqe) = completions.next() {
-                let result = cqe.result();
-                let user_data = cqe.user_data();
+        ring.submit_and_wait(1)?;
+        let completions:Vec<(i32, u64)> = ring.completion().map(|completion| (completion.result(), completion.user_data())).collect();
+        let mutable_ring = &mut ring;
+        for cqe in completions {
+            let result = cqe.0;
+            let user_data = cqe.1;
 
-                if user_data == 1 {
-                    // Accept complété
-                    if result < 0 {
-                        eprintln!(
-                            "Erreur lors du accept: {}",
-                            std::io::Error::from_raw_os_error(-result)
-                        );
-                        // On resoumet un accept
-                        // submit_accept(&mut ring, listener_fd);
-                        need_accept = true;
-                        continue;
-                    }
-
-                    let client_fd = result;
-                    println!("Nouveau client connecté: fd={}", client_fd);
-                    new_clients.push(client_fd);
-                    // Soumettre une lecture sur le client
-                    // to_read.push(client_fd);
-                    // submit_read(&mut ring, client_fd);
-                    let buf = Arc::new(Mutex::new(vec![0u8; 512]));
-                    buffers.lock().unwrap().insert(client_fd, buf.clone());
-                    need_accept = true;
-                    // On resoumet un accept pour les prochains clients
-                    //submit_accept(&mut ring, listener_fd);
-                } else if user_data >= 2 && user_data <= 1000 {
-                    if result == 0 {
-                        println!("Client déconnecté {}", &((user_data - 2) as i32));
-                        // Rien à faire ici, le client a fermé la connexion
-                        buffers.lock().unwrap().remove(&((user_data - 2) as i32));
-                    } else if result < 0 {
-                        eprintln!(
-                            "Erreur lors de la lecture: {}",
-                            std::io::Error::from_raw_os_error(-result)
-                        );
-                    } else {
-                        let n = result as usize;
-                        let fd = (user_data - 2) as i32; // petite astuce pour récupérer le fd si tu l’avais stocké
-                        let guard = buffers.lock().unwrap();
-                        let buf_mutex = guard.get(&fd).unwrap();
-                        let buf = buf_mutex.lock().unwrap();
-                        println!("Received data is {}", String::from_utf8_lossy(&buf[..n]));
-                        // Ici tu pourrais écrire au client si tu veux
-                        to_write.push(fd);
-                        //to_read.push(fd);
-                        //submit_read(&mut ring, fd);  // relancer une lecture sur ce fd
-                    }
-                } else if user_data >= 1000 {
-                    let client_fd = user_data - 1000;
-                    println!("Écriture terminée sur fd={}", client_fd);
-                    to_read.push(client_fd as i32);
+            if user_data == ACCEPT_FLAG {
+                // Reschedule a new accept
+                submit_accept(mutable_ring, listener_fd);
+                if result < 0 {
+                    println!("Accept error");
+                    continue;
                 }
+                println!("Accepted connection from {result:?}");
+                connections.accept_new_client(result);
+                let greetings = "Hello from io-uring server !\n";
+                submit_write(mutable_ring, result, greetings, greetings.len());
+            } else if user_data >= 2 && user_data <= 1000 {
+                let fd = (user_data - 2) as i32;
+                if result == 0 {
+                    println!("Client {fd} disconnected");
+                    connections.disconnect(fd);
+                } else if result < 0 {
+                    eprintln!(
+                        "Error reading from client: {}",
+                        std::io::Error::from_raw_os_error(-result)
+                    );
+                } else {
+                    connections.receive_data(&fd, result as usize);
+                    let greetings = "io_uring server received your message !\n";
+                    submit_write(mutable_ring, fd, greetings, greetings.len());
+                }
+            } else if user_data >= 1000 {
+                let client_fd = user_data - 1000;
+                println!("Write finished on fd={}", client_fd);
+                submit_read(
+                    mutable_ring,
+                    client_fd as i32,
+                    connections.get_buffer(client_fd as i32),
+                );
             }
         }
-        for fd in new_clients.drain(..) {
-            let greetings = "Hello from io-uring server !\n";
-            submit_write(&mut ring, fd, greetings, greetings.len());
-        }
-        for fd in to_write.drain(..) {
-            let greetings = "Server got your message !\n";
-            submit_write(&mut ring, fd, greetings, greetings.len());
-        }
-        // Après avoir fini d’itérer :
-        if need_accept {
-            submit_accept(&mut ring, listener_fd);
-        }
-        for fd in to_read {
-            if let Some(buf) = buffers.lock().unwrap().get(&fd) {
-                submit_read(&mut ring, fd, buf.clone());
-            }
-        }
-
     }
+}
+
+fn get_all_completions(io_uring: IoUring){
+
 }
 
 fn submit_write(ring: &mut IoUring, fd: i32, buffer: &str, size: usize) {
@@ -110,7 +79,7 @@ fn submit_write(ring: &mut IoUring, fd: i32, buffer: &str, size: usize) {
         .user_data((fd + 1000) as u64); // encode fd pour savoir à qui appartient l’opération
 
     unsafe {
-        ring.submission().push(&write_e).expect("soumission write échouée");
+        ring.submission().push(&write_e).expect("submission failed");
     }
 }
 
@@ -123,26 +92,24 @@ fn submit_accept(ring: &mut IoUring, listener_fd: i32) {
     unsafe {
         ring.submission()
             .push(&accept_e)
-            .expect("soumission accept échouée");
+            .expect("submission failed");
     }
 }
 
 // Soumet un read
-fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: Arc<Mutex<Vec<u8>>>) {
+fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: Buffer) {
     let mut buf_lock = buffer.lock().unwrap();
     let read = opcode::Read::new(
         types::Fd(client_fd),
         buf_lock.as_mut_ptr(),
         buf_lock.len() as _,
     );
-    let read_e = read
-        .build()
-        .user_data((2 + client_fd) as u64);
+    let read_e = read.build().user_data((2 + client_fd) as u64);
 
     // Libère explicitement le lock avant le push
     drop(buf_lock);
 
     unsafe {
-        ring.submission().push(&read_e).expect("soumission read échouée");
+        ring.submission().push(&read_e).expect("submission failed");
     }
 }
