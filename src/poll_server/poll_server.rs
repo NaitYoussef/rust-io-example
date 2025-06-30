@@ -66,7 +66,7 @@ fn main() -> io::Result<()> {
                                 pfd.fd.as_raw_fd(),
                                 String::from_utf8_lossy(&buf[..n])
                             );
-                            client_stream.write("Hello you\n".as_bytes()).unwrap();
+                            client_stream.write_all("Hello you\n".as_bytes()).unwrap();
                         }
                         Err(e) => {
                             // Erreur de lecture => ferme le client
