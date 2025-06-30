@@ -11,7 +11,7 @@ pub struct Connection {
 
 pub enum ConnectionStatus {
     Established,
-    Closed,
+    Closed(TcpStream),
 }
 impl Connection {
     pub fn new() -> Self {
@@ -25,7 +25,7 @@ impl Connection {
             .set_nonblocking(true)
             .expect("Failed to set non-blocking mode on the stream");
         stream
-            .write_all(b"Hello from epoll server\n")
+            .write_all(b"Hello from kqueue server\n")
             .expect("Failed to send data to client");
         self.clients.insert(fd, stream);
     }
@@ -35,8 +35,8 @@ impl Connection {
             let mut buf = [0; 1024];
             match stream.read(&mut buf) {
                 Ok(0) => {
-                    self.clients.remove(fd);
-                    Some(Closed)
+                    let removed = self.clients.remove(fd)?;
+                    Some(Closed(removed))
                 }
                 Ok(n) => {
                     print!(
@@ -44,13 +44,13 @@ impl Connection {
                         fd,
                         String::from_utf8_lossy(&buf[..n])
                     );
-                    stream.write_all(b"Epoll server received your message\n").unwrap();
+                    stream.write_all(b"Kqueue server recieved your message\n").unwrap();
                     Some(Established)
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
                 Err(_) => {
-                    self.clients.remove(fd);
-                    Some(Closed)
+                    let removed = self.clients.remove(fd)?;
+                    Some(Closed(removed))
                 }
             }
         } else {

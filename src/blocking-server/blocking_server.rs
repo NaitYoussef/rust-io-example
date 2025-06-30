@@ -12,7 +12,7 @@ fn server_main(listener: TcpListener) -> io::Result<()> {
         // Using format! instead of write! avoids breaking up lines across multiple writes. This is
         // easier than doing line buffering on the client side.
         let mut buf = [0u8; 1024];
-        stream.write_all("Hello from blocking server \n".to_string().as_bytes())?;
+        stream.write_all("Salut de la part du serveur bloquant\n".to_string().as_bytes())?;
         loop {
             match stream.read(&mut buf) {
                 Ok(0) => {
