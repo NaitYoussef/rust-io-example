@@ -219,7 +219,6 @@ Existe depuis java 1.6 avec la classe ```SelectorProvider```.
 
 <!-- column: 0 -->
 ``` java
-    System.setProperty("java.nio.channels.spi.SelectorProvider", "sun.nio.ch.PollSelectorProvider");
     Selector selector = Selector.open();
 
     ServerSocketChannel serverChannel = ServerSocketChannel.open();
