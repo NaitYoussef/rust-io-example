@@ -320,11 +320,20 @@ API io uring, caractéristiques
 ```
 <!-- end_slide -->
 
-Comparatif des performances
+Comparatif des performances (select - poll - epoll - kqueue)
 ---
+
+![](images/epoll_vs_poll.png)
+https://monkey.org/~provos/libevent/libevent-benchmark2.jpg
 
 <!-- end_slide -->
 
+Comparatif des performances (poll - epoll)
+---
+
+![](images/postgrebench.png)
+https://www.postgresql.org/message-id/uvrtrknj4kdytuboidbhwclo4gxhswwcpgadptsjvjqcluzmah%40brqs62irg4dt
+<!-- end_slide -->
 IO uring et l'écosytème java
 ---
 
