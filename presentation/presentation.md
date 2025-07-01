@@ -107,7 +107,7 @@ Everything is a filedescriptor
 ===
 
 <!-- end_slide -->
-Excerice
+Exercice
 ---
  ```          
 +----------------+         +----------------+ 
@@ -120,7 +120,7 @@ Excerice
 |                | text    |                | 
 |                | <-----  |                | 
 |                | disco   |                | 
-|                | --//-- |                | 
+|                | --//--  |                | 
 +----------------+         +----------------+ 
 ```
 <!-- end_slide -->
