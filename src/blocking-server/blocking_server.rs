@@ -3,7 +3,7 @@ use std::io::prelude::*;
 use std::net::TcpListener;
 use std::os::fd::AsRawFd;
 
-const DISCONNECTED: u64 = 0;
+const DISCONNECTED: usize = 0;
 
 fn server_main(listener: TcpListener) -> io::Result<()> {
     println!("Blocking server started!");

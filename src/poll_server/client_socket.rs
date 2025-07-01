@@ -1,14 +1,12 @@
 use crate::client_socket::ConnectionStatus::{Closed, Established};
-use libc::pollfd;
 use std::collections::HashMap;
 use std::io;
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::os::fd::{AsRawFd, RawFd};
+use std::os::fd::RawFd;
 
 pub struct Connection {
     clients: HashMap<RawFd, TcpStream>,
-    pub poll_fds: Vec<pollfd>,
 }
 
 pub enum ConnectionStatus {
@@ -17,14 +15,13 @@ pub enum ConnectionStatus {
 }
 
 impl Connection {
-    pub fn new(accept_fd: pollfd) -> Self {
+    pub fn new() -> Self {
         Connection {
             clients: HashMap::new(),
-            poll_fds: vec![accept_fd],
         }
     }
 
-    pub fn accept_new_client(&mut self, fd: RawFd, mut stream: TcpStream, poll_fd: pollfd) {
+    pub fn accept_new_client(&mut self, fd: RawFd, mut stream: TcpStream) {
         stream
             .set_nonblocking(true)
             .expect("Failed to set non-blocking mode on the stream");
@@ -32,7 +29,6 @@ impl Connection {
             .write_all(b"Hello from poll server\n")
             .expect("Failed to send data to client");
         self.clients.insert(fd, stream);
-        self.poll_fds.push(poll_fd);
     }
 
     pub fn receive_data_and_respond(&mut self, fd: &RawFd) -> Option<ConnectionStatus> {
@@ -41,7 +37,6 @@ impl Connection {
             match stream.read(&mut buf) {
                 Ok(0) => {
                     self.clients.remove(fd)?;
-                    self.poll_fds.retain(|poll_fd| poll_fd.fd != fd.as_raw_fd());
                     Some(Closed)
                 }
                 Ok(n) => {
@@ -58,7 +53,6 @@ impl Connection {
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
                 Err(_) => {
                     self.clients.remove(fd)?;
-                    self.poll_fds.retain(|poll_fd| poll_fd.fd != fd.as_raw_fd());
                     Some(Closed)
                 }
             }

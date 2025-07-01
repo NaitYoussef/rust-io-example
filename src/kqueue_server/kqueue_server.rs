@@ -12,7 +12,7 @@ fn main() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
     listener.set_nonblocking(true)?;
     let kq = kqueue()?;
-    pushAcceptEvent(&listener, &kq)?;
+    push_accept_event(&listener, &kq)?;
     let mut clients = Connection::new();
     println!("kqueue server started !");
     loop {
@@ -33,7 +33,7 @@ fn main() -> io::Result<()> {
                         let fd = stream.as_raw_fd();
                         clients.accept_new_client(fd, stream);
                         println!("Accepted connection from {addr:?}");
-                        pushReadEvent(&kq, &fd)?;
+                        push_read_event(&kq, &fd)?;
                     }
                     Err(e) => {
                         eprintln!("Accept error: {:?}", e);
@@ -45,7 +45,7 @@ fn main() -> io::Result<()> {
                     None | Some(ConnectionStatus::Established) => {}
                     Some(ConnectionStatus::Closed(_)) => {
                         println!("Client {fd} disconnected");
-                        pushRemoveEvent(&kq, &fd)?;
+                        push_remove_event(&kq, &fd)?;
                     }
                 }
             }
@@ -53,19 +53,19 @@ fn main() -> io::Result<()> {
     }
 }
 
-fn pushReadEvent(kq: &Kqueue, fd: &RawFd) -> Result<(), Error> {
+fn push_read_event(kq: &Kqueue, fd: &RawFd) -> Result<(), Error> {
     let ev = new_event(&fd, EvFlags::EV_ADD);
     Kqueue::kevent(&kq, &ev, &mut [], None)?;
     Ok(())
 }
 
-fn pushAcceptEvent(listener: &TcpListener, kq: &Kqueue) -> Result<(), Error> {
+fn push_accept_event(listener: &TcpListener, kq: &Kqueue) -> Result<(), Error> {
     let changelist = new_event(&listener.as_raw_fd(), EvFlags::EV_ADD);
     Kqueue::kevent(&kq, &changelist, &mut [], None)?;
     Ok(())
 }
 
-fn pushRemoveEvent(kq: &Kqueue, fd: &i32) -> Result<(), Error> {
+fn push_remove_event(kq: &Kqueue, fd: &i32) -> Result<(), Error> {
     let ev = new_event(&fd, EvFlags::EV_DELETE);
     Kqueue::kevent(&kq, &ev, &mut [], None)?;
     Ok(())
