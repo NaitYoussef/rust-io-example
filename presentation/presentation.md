@@ -208,6 +208,77 @@ Après suppression :
 ```
 
 <!-- end_slide -->
+
+
+API poll et epoll en java
+---
+
+Existe depuis java 1.6 avec la classe ```SelectorProvider```.
+
+<!-- column_layout: [1, 1] -->
+
+<!-- column: 0 -->
+``` java
+    Selector selector = Selector.open();
+
+    ServerSocketChannel serverChannel = ServerSocketChannel.open();
+    serverChannel.configureBlocking(false);
+    serverChannel.bind(new InetSocketAddress("0.0.0.0", 8000));
+
+    serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+    while (true) {
+      // Attente des événements
+      selector.select();
+
+      // Récupération des clés prêtes
+      Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+
+      while (keys.hasNext()) {
+        SelectionKey key = keys.next();
+        keys.remove();
+
+
+```
+
+<!-- column: 1 -->
+
+``` java
+        if (key.isAcceptable()) {
+          // Accepter une nouvelle connexion
+          ServerSocketChannel server = (ServerSocketChannel) key.channel();
+          SocketChannel clientChannel = server.accept();
+          clientChannel.configureBlocking(false);
+          clientChannel.register(selector, SelectionKey.OP_READ);
+          System.out.println("Nouvelle connexion acceptée : " + clientChannel.getRemoteAddress());
+        } else if (key.isReadable()) {
+          // Lire les données du client
+          SocketChannel clientChannel = (SocketChannel) key.channel();
+          ByteBuffer buffer = ByteBuffer.allocateDirect(512);
+          int bytesRead = clientChannel.read(buffer);
+          if (bytesRead == -1) {
+            // Le client a fermé la connexion
+            clientChannel.close();
+          } else {
+            buffer.flip();
+            String message = new String(buffer.array(), 0, buffer.limit());
+            System.out.println("Message reçu : " + message);
+
+            // Répondre au client
+            clientChannel.write(ByteBuffer.wrap(("Message reçu : " + message + "\n").getBytes()));
+          }
+        }
+      }
+    }
+```
+<!-- reset_layout -->
+
+On peut choisir l'implementation avec le propriété ```java.nio.channels.spi.SelectorProvider```
+
+<!-- end_slide -->
+
+
+
 API io uring, caractéristiques
 ---
 
@@ -248,11 +319,20 @@ API io uring, caractéristiques
 ```
 <!-- end_slide -->
 
-Comparatif des performances
+Comparatif des performances (select - poll - epoll - kqueue)
 ---
+
+![](images/epoll_vs_poll.png)
+https://monkey.org/~provos/libevent/libevent-benchmark2.jpg
 
 <!-- end_slide -->
 
+Comparatif des performances (poll - epoll)
+---
+
+![](images/postgrebench.png)
+https://www.postgresql.org/message-id/uvrtrknj4kdytuboidbhwclo4gxhswwcpgadptsjvjqcluzmah%40brqs62irg4dt
+<!-- end_slide -->
 IO uring et l'écosytème java
 ---
 
