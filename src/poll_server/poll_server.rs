@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
             if (pfd.revents & libc::POLLIN) != 0 && pfd.fd == listener.as_raw_fd() {
                 match listener.accept() {
                     Ok((mut stream, addr)) => {
-                        println!("Accepted connection from {:?}", addr);
+                        println!("Accepted connection from {:?} fd {}", addr, stream.as_raw_fd());
                         let client_fd = create_pool_fd(stream.as_raw_fd());
                         poll_fds.push(client_fd);
                         connections.accept_new_client(stream.as_raw_fd(), stream);

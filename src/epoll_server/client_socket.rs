@@ -42,7 +42,7 @@ impl Connection {
                     print!(
                         "Received from {}: {}",
                         fd,
-                        String::from_utf8_lossy(&buf[..n])
+                        String::from_utf8_lossy(&buf[..n]).replace('\n', "")
                     );
                     stream.write_all(b"Epoll server received your message\n").unwrap();
                     Some(Established)

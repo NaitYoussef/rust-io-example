@@ -36,7 +36,7 @@ fn main() -> std::io::Result<()> {
                     println!("Accept error");
                     continue;
                 }
-                println!("Accepted connection from {result:?}");
+                println!("Accepted connection from {result:?} fd {}", result);
                 connections.accept_new_client(result);
                 let greetings = "Hello from io-uring server !\n";
                 submit_write(mutable_ring, result, greetings, greetings.len());

@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
                     Ok((stream, addr)) => {
                         let fd = stream.as_raw_fd();
                         clients.accept_new_client(fd, stream);
-                        println!("Accepted connection from {addr:?}");
+                        println!("Accepted connection from {addr:?} fd {}", fd);
                         push_read_event(&kq, &fd)?;
                     }
                     Err(e) => {

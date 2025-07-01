@@ -166,6 +166,10 @@ Après ajout :
 ```
 
 <!-- end_slide -->
+<!-- jump_to_middle -->
+Demo
+===
+<!-- end_slide -->
 API epoll, caractéristiques
 ---
 
@@ -229,7 +233,10 @@ Après suppression :
 ```
 
 <!-- end_slide -->
-
+<!-- jump_to_middle -->
+Demo
+===
+<!-- end_slide -->
 
 API poll et epoll en java
 ---
@@ -339,7 +346,10 @@ API io uring, caractéristiques
 +---------------------------------------------------------------------+
 ```
 <!-- end_slide -->
-
+<!-- jump_to_middle -->
+Demo
+===
+<!-- end_slide -->
 Comparatif des performances (select - poll - epoll - kqueue)
 ---
 
