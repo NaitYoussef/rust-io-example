@@ -35,6 +35,6 @@ impl Connection {
         let guard = self.buffers.lock().unwrap();
         let buf_mutex = guard.get(&fd).unwrap();
         let buf = buf_mutex.lock().unwrap();
-        println!("Received {}", String::from_utf8_lossy(&buf[..n]));
+        println!("Received {} from {}", String::from_utf8_lossy(&buf[..n]).replace('\n', ""), fd);
     }
 }
