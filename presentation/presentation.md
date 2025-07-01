@@ -109,7 +109,20 @@ Everything is a filedescriptor
 <!-- end_slide -->
 Excerice
 ---
-  * permet de surveiller plusieurs file descriptor
+ ```          
++----------------+         +----------------+ 
+|  Serveur       |         |      Client    |
+|                |         |                | 
+|                | connect |                | 
+|                | <-----  |                | 
+|                | text    |                | 
+|                | ----->  |                | 
+|                | text    |                | 
+|                | <-----  |                | 
+|                | disco   |                | 
+|                | --//-- |                | 
++----------------+         +----------------+ 
+```
 <!-- end_slide -->
 <!-- jump_to_middle -->
 Demo
@@ -118,11 +131,12 @@ Demo
 API poll, caractéristiques
 ---
 
-* Api posix (1)
-* intégré au kernel dans la version 2.1.23 (1997)
-* permet de surveiller plusieurs file descriptor
-* quelques problèmes de scalabilité
+  * Api posix (1)
+  * intégré au kernel dans la version 2.1.23 (1997)
+  * permet de surveiller plusieurs file descriptor
+  * quelques problèmes de scalabilité
 
+<!-- end_slide -->
 API poll, schéma
 ---
 
@@ -355,6 +369,8 @@ Conclusion
 ---
 
 <!-- end_slide -->
+
+![](images/qrcode.jpeg)
 
 Merci
 ===
