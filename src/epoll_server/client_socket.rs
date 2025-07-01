@@ -39,7 +39,7 @@ impl Connection {
                     Some(Closed)
                 }
                 Ok(n) => {
-                    print!(
+                    println!(
                         "Received from {}: {}",
                         fd,
                         String::from_utf8_lossy(&buf[..n]).replace('\n', "")
