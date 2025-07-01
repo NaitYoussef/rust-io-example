@@ -1,19 +1,37 @@
 [package]
 name = "rut-io-example"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[features]
+linux = ["io-uring"]
+macos = ["nix/event"]
 
 [[bin]]
-name = "blocking-client_server"
-path = "src/blocking-client-server/blocking_client_server.rs"
+name = "blocking-server"
+path = "src/blocking-server/blocking_server.rs"
 
 [[bin]]
-name = "blocking-client"
-path = "src/poll_client_server/poll_client_server.rs"
+name = "poll-server"
+path = "src/poll_server/poll_server.rs"
 
 [[bin]]
-name = "poll-server-client"
-path = "src/async-runtime/poll-async.rs"
+name = "epoll-server"
+path = "src/epoll_server/epoll_server.rs"
+required-features = ["linux"]
+
+[[bin]]
+name = "kqueue-server"
+path = "src/kqueue_server/kqueue_server.rs"
+required-features = ["macos"]
+
+[[bin]]
+name = "io-uring-server"
+path = "src/io_uring_server/io_uring_server.rs"
+required-features = ["linux"]
+
 
 [dependencies]
 libc = "0.2.172"
+nix = { version = "0.30.1"}
+io-uring = { version = "0.7.8" , optional = true}
