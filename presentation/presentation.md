@@ -17,7 +17,7 @@ Speakers
 _Jean-Eudes Couignoux (capco)_
 
 <!-- column: 1 -->
-![](images/youssef.png)
+![](images/youssef.jpeg)
 _Youssef Nait Belkacem (freelance)_
 
 
@@ -106,6 +106,27 @@ Linux Virtual File System
 Everything is a filedescriptor
 ===
 
+<!-- end_slide -->
+Excerice
+---
+ ```          
++----------------+         +----------------+ 
+|  Serveur       |         |      Client    |
+|                |         |                | 
+|                | connect |                | 
+|                | <-----  |                | 
+|                | text    |                | 
+|                | ----->  |                | 
+|                | text    |                | 
+|                | <-----  |                | 
+|                | disco   |                | 
+|                | --//-- |                | 
++----------------+         +----------------+ 
+```
+<!-- end_slide -->
+<!-- jump_to_middle -->
+Demo
+===
 <!-- end_slide -->
 API poll, caractéristiques
 ---
@@ -349,6 +370,7 @@ Conclusion
 
 <!-- end_slide -->
 
+![](images/qrcode.jpeg)
+
 Merci
-![](images/youssef.png)
 ===

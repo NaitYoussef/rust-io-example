@@ -22,18 +22,20 @@ fn main() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
     listener.set_nonblocking(true)?;
     let poll_fd = create_pool_fd(listener.as_raw_fd());
-    let mut connections = Connection::new(poll_fd);
+    let mut poll_fds = vec![poll_fd];
+    let mut connections = Connection::new();
     println!("Poll server started !");
     loop {
-        let mut vec = connections.poll_fds.clone();
-        poll(&mut vec);
-        for pfd in &vec {
+        let mut poll_fds_clone = poll_fds.clone();
+        poll(&mut poll_fds_clone);
+        for pfd in &poll_fds_clone {
             if (pfd.revents & libc::POLLIN) != 0 && pfd.fd == listener.as_raw_fd() {
                 match listener.accept() {
                     Ok((mut stream, addr)) => {
                         println!("Accepted connection from {:?}", addr);
                         let client_fd = create_pool_fd(stream.as_raw_fd());
-                        connections.accept_new_client(stream.as_raw_fd(), stream, client_fd);
+                        poll_fds.push(client_fd);
+                        connections.accept_new_client(stream.as_raw_fd(), stream);
                     }
                     Err(e) => {
                         println!("Accept error: {:?}", e);
@@ -45,6 +47,7 @@ fn main() -> io::Result<()> {
                     Some(ConnectionStatus::Closed) => {
                         let fd = pfd.fd.as_raw_fd();
                         println!("Client {fd} disconnected");
+                        poll_fds.retain(|poll_fd| poll_fd.fd != fd.as_raw_fd());
                     }
                 }
             }

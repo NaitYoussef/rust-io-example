@@ -7,6 +7,7 @@ use std::os::unix::io::AsRawFd;
 use std::ptr;
 
 const ACCEPT_FLAG: u64 = 1;
+const DISCONNECTED: i32 = 0;
 
 fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
@@ -41,7 +42,7 @@ fn main() -> std::io::Result<()> {
                 submit_write(mutable_ring, result, greetings, greetings.len());
             } else if user_data >= 2 && user_data <= 1000 {
                 let fd = (user_data - 2) as i32;
-                if result == 0 {
+                if result == DISCONNECTED {
                     println!("Client {fd} disconnected");
                     connections.disconnect(fd);
                 } else if result < 0 {
@@ -65,10 +66,6 @@ fn main() -> std::io::Result<()> {
             }
         }
     }
-}
-
-fn get_all_completions(io_uring: IoUring){
-
 }
 
 fn submit_write(ring: &mut IoUring, fd: i32, buffer: &str, size: usize) {
