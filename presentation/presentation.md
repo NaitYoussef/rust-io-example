@@ -17,7 +17,7 @@ Speakers
 _Jean-Eudes Couignoux (capco)_
 
 <!-- column: 1 -->
-![](images/youssef.png)
+![](images/youssef.jpeg)
 _Youssef Nait Belkacem (freelance)_
 
 
@@ -107,15 +107,22 @@ Everything is a filedescriptor
 ===
 
 <!-- end_slide -->
+Excerice
+---
+  * permet de surveiller plusieurs file descriptor
+<!-- end_slide -->
+<!-- jump_to_middle -->
+Demo
+===
+<!-- end_slide -->
 API poll, caractéristiques
 ---
 
-  * Api posix (1)
-  * intégré au kernel dans la version 2.1.23 (1997)
-  * permet de surveiller plusieurs file descriptor
-  * quelques problèmes de scalabilité
+* Api posix (1)
+* intégré au kernel dans la version 2.1.23 (1997)
+* permet de surveiller plusieurs file descriptor
+* quelques problèmes de scalabilité
 
-<!-- end_slide -->
 API poll, schéma
 ---
 
@@ -350,5 +357,4 @@ Conclusion
 <!-- end_slide -->
 
 Merci
-![](images/youssef.png)
 ===

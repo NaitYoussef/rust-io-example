@@ -48,7 +48,6 @@ fn main() -> io::Result<()> {
                         pushRemoveEvent(&kq, &fd)?;
                     }
                 }
-
             }
         }
     }
