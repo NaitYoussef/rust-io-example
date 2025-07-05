@@ -1,10 +1,10 @@
 mod client_socket;
 
-use crate::client_socket::{Buffer, Connection};
 use io_uring::{opcode, types, IoUring};
 use std::net::TcpListener;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
+use crate::client_socket::Connection;
 
 const ACCEPT_FLAG: u64 = 1;
 const DISCONNECTED: i32 = 0;
@@ -23,7 +23,10 @@ fn main() -> std::io::Result<()> {
     let mut connections = Connection::new();
     loop {
         ring.submit_and_wait(1)?;
-        let completions:Vec<(i32, u64)> = ring.completion().map(|completion| (completion.result(), completion.user_data())).collect();
+        let completions: Vec<(i32, u64)> = ring
+            .completion()
+            .map(|completion| (completion.result(), completion.user_data()))
+            .collect();
         let mutable_ring = &mut ring;
         for cqe in completions {
             let result = cqe.0;
@@ -94,17 +97,13 @@ fn submit_accept(ring: &mut IoUring, listener_fd: i32) {
 }
 
 // Soumet un read
-fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: Buffer) {
-    let mut buf_lock = buffer.lock().unwrap();
-    let read = opcode::Read::new(
-        types::Fd(client_fd),
-        buf_lock.as_mut_ptr(),
-        buf_lock.len() as _,
-    );
+fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: Vec<u8>) {
+    let mut buffer = buffer.clone();
+    let read = opcode::Read::new(types::Fd(client_fd), buffer.as_mut_ptr(), buffer.len() as _);
     let read_e = read.build().user_data((2 + client_fd) as u64);
 
     // Libère explicitement le lock avant le push
-    drop(buf_lock);
+    // drop(buf_lock);
 
     unsafe {
         ring.submission().push(&read_e).expect("submission failed");
