@@ -43,7 +43,7 @@ fn main() -> io::Result<()> {
                         Ok((stream, addr)) => {
                             let client_fd = stream.as_raw_fd();
                             clients.accept_new_client(client_fd, stream);
-                            println!("Accepted connection from {addr:?} fd {}", client_fd);
+                            println!("Accepted connection from {addr:?} fd {client_fd}");
                             let mut ev = epoll_event {
                                 events: (EPOLLIN | EPOLLET) as u32,
                                 u64: client_fd as u64,

@@ -37,7 +37,7 @@ fn main() -> io::Result<()> {
                         connections.accept_new_client(stream.as_raw_fd(), stream);
                     }
                     Err(e) => {
-                        println!("Accept error: {:?}", e);
+                        println!("Accept error: {e:?}");
                     }
                 }
             } else if (pfd.revents & libc::POLLIN) != 0 {
