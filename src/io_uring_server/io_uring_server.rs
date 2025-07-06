@@ -8,16 +8,17 @@ use std::ptr;
 
 const DISCONNECTED: i32 = 0;
 
+const OPERATION_ACCEPT: i32 = 1;
+const OPERATION_READ: i32 = 2;
+const OPERATION_WRITE: i32 = 3;
+
 enum OpType {
     Accept,
     Read(i32),
     Write(i32),
 }
 
-const OPERATION_ACCEPT: i32 = 1;
-const OPERATION_READ: i32 = 2;
-const OPERATION_WRITE: i32 = 3;
-
+// use a tryFrom implementation to convert from u64 to OpType, externalize OpType in specific module
 impl From<u64> for OpType {
     fn from(value: u64) -> Self {
         let fd: i32 = (value & 0xFFFF_FFFF) as i32;
@@ -135,9 +136,6 @@ fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: Vec<u8>) {
     let read = opcode::Read::new(types::Fd(client_fd), buffer.as_mut_ptr(), buffer.len() as _)
         .build()
         .user_data(u64::from(op_type));
-
-    // Libère explicitement le lock avant le push
-    // drop(buf_lock);
 
     unsafe {
         ring.submission().push(&read).expect("submission failed");
