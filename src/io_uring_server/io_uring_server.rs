@@ -130,8 +130,7 @@ fn submit_accept(ring: &mut IoUring, listener_fd: i32) {
 }
 
 // Soumet un read
-fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: Vec<u8>) {
-    let mut buffer = buffer.clone();
+fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: &mut Vec<u8>) {
     let op_type = OpType::Read(client_fd);
     let read = opcode::Read::new(types::Fd(client_fd), buffer.as_mut_ptr(), buffer.len() as _)
         .build()

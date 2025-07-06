@@ -16,8 +16,8 @@ impl Connection {
         self.buffers.remove(&fd);
     }
 
-    pub fn get_buffer(&self, fd: i32) -> Vec<u8> {
-        self.buffers.get(&fd).unwrap().clone()
+    pub fn get_buffer(&mut self, fd: i32) -> &mut Vec<u8> {
+        self.buffers.get_mut(&fd).unwrap()
     }
 
     pub fn accept_new_client(&mut self, fd: RawFd) {
