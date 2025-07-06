@@ -27,7 +27,7 @@ impl Connection {
 
     pub fn receive_data(&mut self, fd: &RawFd, n: usize) {
         let guard = self.buffers.lock().unwrap();
-        let buf = guard.get(&fd).unwrap();
+        let buf = guard.get(fd).unwrap();
         println!("Received {} from {}", String::from_utf8_lossy(&buf[..n]).replace('\n', ""), fd);
     }
 }

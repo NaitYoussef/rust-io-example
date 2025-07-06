@@ -6,7 +6,6 @@ use std::net::TcpListener;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
 
-const ACCEPT_FLAG: u64 = 1;
 const DISCONNECTED: i32 = 0;
 
 enum OpType {
@@ -38,7 +37,7 @@ impl From<u64> for OpType {
 impl From<OpType> for u64 {
     fn from(value: OpType) -> Self {
         match value {
-            OpType::Accept => (1u64 << 32),
+            OpType::Accept => 1u64 << 32,
             OpType::Read(fd) => (2u64 << 32) | (fd as u32 as u64),
             OpType::Write(fd) => (3u64 << 32) | (fd as u32 as u64),
         }
