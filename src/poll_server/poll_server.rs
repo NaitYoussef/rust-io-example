@@ -4,7 +4,6 @@ use crate::client_socket::{Connection, ConnectionStatus};
 
 use libc::pollfd;
 use std::io;
-use std::io::prelude::*;
 use std::net::TcpListener;
 use std::os::fd::{AsRawFd, RawFd};
 
@@ -31,14 +30,14 @@ fn main() -> io::Result<()> {
         for pfd in &poll_fds_clone {
             if (pfd.revents & libc::POLLIN) != 0 && pfd.fd == listener.as_raw_fd() {
                 match listener.accept() {
-                    Ok((mut stream, addr)) => {
+                    Ok((stream, addr)) => {
                         println!("Accepted connection from {:?} fd {}", addr, stream.as_raw_fd());
                         let client_fd = create_pool_fd(stream.as_raw_fd());
                         poll_fds.push(client_fd);
                         connections.accept_new_client(stream.as_raw_fd(), stream);
                     }
                     Err(e) => {
-                        println!("Accept error: {:?}", e);
+                        println!("Accept error: {e:?}");
                     }
                 }
             } else if (pfd.revents & libc::POLLIN) != 0 {

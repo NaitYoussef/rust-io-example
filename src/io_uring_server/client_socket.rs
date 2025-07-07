@@ -1,40 +1,35 @@
 use std::collections::HashMap;
 use std::os::fd::RawFd;
-use std::sync::{Arc, Mutex};
 
-pub type Buffer = Arc<Mutex<Vec<u8>>>;
 pub struct Connection {
-    buffers: Arc<Mutex<HashMap<i32, Buffer>>>
+    buffers: HashMap<i32, Vec<u8>>,
 }
 
-pub enum ConnectionStatus {
-    Established,
-    Closed,
-}
 impl Connection {
     pub fn new() -> Self {
         Connection {
-            buffers: Arc::new(Mutex::new(HashMap::new())),
+            buffers: HashMap::new(),
         }
     }
 
     pub fn disconnect(&mut self, fd: RawFd) {
-        self.buffers.lock().unwrap().remove(&fd);
+        self.buffers.remove(&fd);
     }
 
-    pub fn get_buffer(&self, fd:i32) -> Buffer {
-        self.buffers.lock().unwrap().get(&fd).unwrap().clone()
+    pub fn get_buffer(&mut self, fd: i32) -> &mut Vec<u8> {
+        self.buffers.get_mut(&fd).unwrap()
     }
 
     pub fn accept_new_client(&mut self, fd: RawFd) {
-        let buf = Arc::new(Mutex::new(vec![0u8; 512]));
-        self.buffers.lock().unwrap().insert(fd, buf.clone());
+        self.buffers.insert(fd, vec![0u8; 512]);
     }
 
     pub fn receive_data(&mut self, fd: &RawFd, n: usize) {
-        let guard = self.buffers.lock().unwrap();
-        let buf_mutex = guard.get(&fd).unwrap();
-        let buf = buf_mutex.lock().unwrap();
-        println!("Received {} from {}", String::from_utf8_lossy(&buf[..n]).replace('\n', ""), fd);
+        let buf = self.buffers.get(fd).unwrap();
+        println!(
+            "Received {} from {}",
+            String::from_utf8_lossy(&buf[..n]).replace('\n', ""),
+            fd
+        );
     }
 }

@@ -2,11 +2,11 @@ mod client_socket;
 
 use crate::client_socket::{Connection, ConnectionStatus};
 use libc::{
-    EPOLL_CTL_ADD, EPOLL_CTL_DEL, EPOLLET, EPOLLIN, c_int, close,
-    epoll_create1 as unix_epoll_create1, epoll_ctl as unix_epoll_ctl, epoll_event,
-    epoll_wait as unix_epoll_wait,
+    c_int, close, epoll_create1 as unix_epoll_create1, epoll_ctl as unix_epoll_ctl, epoll_event, epoll_wait as unix_epoll_wait,
+    EPOLLET, EPOLLIN, EPOLL_CTL_ADD,
+    EPOLL_CTL_DEL,
 };
-use std::io::{self, Read, Write};
+use std::io::{self};
 use std::net::TcpListener;
 use std::os::fd::{AsRawFd, RawFd};
 
@@ -34,16 +34,16 @@ fn main() -> io::Result<()> {
         if number_of_events < 0 {
             return Err(io::Error::last_os_error());
         }
-        for event in events.iter().take(number_of_events) {
+        for event in events.iter().take(number_of_events as usize) {
             let fd = event.u64 as RawFd;
             if fd == listener.as_raw_fd() {
                 // Nouvelle connexion
                 loop {
                     match listener.accept() {
-                        Ok((mut stream, addr)) => {
+                        Ok((stream, addr)) => {
                             let client_fd = stream.as_raw_fd();
                             clients.accept_new_client(client_fd, stream);
-                            println!("Accepted connection from {addr:?} fd {}", client_fd);
+                            println!("Accepted connection from {addr:?} fd {client_fd}");
                             let mut ev = epoll_event {
                                 events: (EPOLLIN | EPOLLET) as u32,
                                 u64: client_fd as u64,
@@ -82,8 +82,8 @@ fn epoll_wait(
     events: *mut crate::epoll_event,
     maxevents: c_int,
     timeout: c_int,
-) -> usize {
-    unsafe { unix_epoll_wait(epfd, events, maxevents, timeout) as usize }
+) -> isize {
+    unsafe { unix_epoll_wait(epfd, events, maxevents, timeout) as isize }
 }
 
 fn epoll_ctl(epoll_fd: c_int, op: c_int, fd: c_int, event: *mut crate::epoll_event) {
