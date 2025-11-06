@@ -40,7 +40,11 @@ Introduction
 ---
 Le WEB aujourd'hui
 ----
+<!-- column_layout: [1, 1] -->
+<!-- column: 0 -->
 ![img.png](images/social-networks.png)
+
+<!-- column: 1 -->
 ![img.png](images/trading.png)
 
 <!-- end_slide -->
@@ -78,28 +82,19 @@ Le WEB aujourd'hui
 <!-- end_slide -->
 Introduction
 ---
-Benchmark
-![](images/nginx-benchmark.png)
-
-Configuration:
-CPU: 2x Intel(R) Xeon(R) CPU E5‑2699 v3 @ 2.30 GHz, 36 real (or 72 HT) cores
-Network: 2x Intel XL710 40 GbE QSFP+ (rev 01)
-Memory: 16 GB
-
-Source : https://blog.nginx.org/blog/testing-the-performance-of-nginx-and-nginx-plus-web-servers
-<!-- end_slide -->
-Introduction
----
-<!-- jump_to_middle -->
-
-Possible grace aux API IO
-===
-
-<!-- end_slide -->
 <!-- jump_to_middle -->
 
 Everything is a file
 ===
+
+<!-- end_slide -->
+
+Api FileInputStream en java
+===
+
+<!-- jump_to_middle -->
+
+![img.png](images/api_inpustream.png)
 
 <!-- end_slide -->
 
@@ -122,6 +117,19 @@ close(3)                                = 0
 close(1)                                = 0
 close(2)                                = 0
 ```
+
+<!-- end_slide -->
+
+Un exemple de Filedescriptor
+---
+
+```
+pos:    256
+flags:  02000002
+mnt_id: 18
+ino:    1091
+```
+
 
 <!-- end_slide -->
 Objets linux représentés par un file descriptor
@@ -222,7 +230,7 @@ Exercice
 ```
 <!-- column: 1 -->
 ```
-Client                                Serveur
+Client 1                             Serveur
 |                                      |
 |                                      |
 |                             listen() -> listen_fd=3
@@ -330,7 +338,7 @@ API poll, schéma
 <!-- column: 1 -->
 
 ```
-Client                                Serveur
+Client 1                              Serveur
 |                                      |
 |                                      |
 |                             listen() -> listen_fd=3
@@ -485,7 +493,7 @@ API epoll
 <!-- column: 1 -->
 
 ```
-Client                                Serveur
+Client 1                              Serveur
 |                                      |
 |                                      |
 |                             listen() -> listen_fd=3
@@ -700,7 +708,7 @@ API epoll
 <!-- column: 1 -->
 
 ```
-Client                                Serveur
+Client 1                              Serveur
 |                                      |
 |                                      |
 |                             listen() -> listen_fd=3
@@ -748,7 +756,7 @@ https://monkey.org/~provos/libevent/libevent-benchmark2.jpg
 
 <!-- end_slide -->
 
-Comparatif des performances (poll - epoll)
+Comparatif des performances (iouring)
 ---
 
 ![](images/postgrebench.png)
