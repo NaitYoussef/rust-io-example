@@ -75,7 +75,6 @@ Le WEB aujourd'hui
 │ Client 1  ││Client 2││Client 3│
 └───────────┘└────────┘└────────┘
 ```
-![img.png](images/sse.png)
 <!-- end_slide -->
 Introduction
 ---
@@ -93,7 +92,7 @@ Introduction
 ---
 <!-- jump_to_middle -->
 
-Possible grace aux API async IO de Linux
+Possible grace aux API IO
 ===
 
 <!-- end_slide -->
@@ -623,7 +622,7 @@ API IO uring (schéma)
 |                |                        ^                           |
 |                |                        |                           |
 |                +----------+  +----------+                           |
-|                           |  |                                      |
+|                           v  |                                      |
 |                         +--------+                                  |
 |                         | readv  |                                  |
 |                         +--------+                                  |
@@ -638,18 +637,18 @@ API IO uring (schéma)
     Demande d'écriture sur fd3 (fd3) :
         |
         v
-    ring.submit([OP_WRITE,fd3,UD:X], buf)
+    ring_submit([OP_WRITE,fd3,UD:X], buf)
         |
         |
         v
 +--------------------------------------------+
 |         IO uring instance SQ               |
 |--------------------------------------------|
-| [ ACCEPT:fd1, UD:A ] [ WRITE:fd3, UD:B ]   |  <-- Opération demandé sur la submission queue
+|  [ WRITE:fd3, UD:B ]                       |  <-- Opération demandé sur la submission queue
 +--------------------------------------------+
         |
         v
-    ring.submit_and_wait()
+    ring_submit_and_wait()
         |
         v
     Après écriture sur fd3 (fd3) :
@@ -658,7 +657,7 @@ API IO uring (schéma)
 +-----------------------------+
 |  IO uring instance CQ       |
 |-----------------------------|
-|  [ UD:A,20 ]                |  <-- Résultat des opérations exécutées dans la completion queue
+|  [ UD:B,20 ]                |  <-- Résultat des opérations exécutées dans la completion queue
 +-----------------------------+
 ```
 <!-- end_slide -->
