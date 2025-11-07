@@ -257,6 +257,7 @@ Client 1                             Serveur
 |                                      |
 |                                      |
 ```
+<!-- end_slide -->
 <!-- jump_to_middle -->
 Demo
 ===
@@ -669,7 +670,7 @@ API IO uring (schéma)
 +-----------------------------+
 ```
 <!-- end_slide -->
-API epoll
+API IO uring
 ---
 <!-- column_layout: [1, 1] -->
 
