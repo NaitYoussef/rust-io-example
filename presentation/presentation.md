@@ -380,7 +380,15 @@ Conclusion
 
 <!-- end_slide -->
 
+Les Slides
+---
 ![](images/qrcode.jpeg)
 
+<!-- end_slide -->
+Feedback
+---
+![](images/qr.png)
+
+<!-- end_slide -->
 Merci
 ===
