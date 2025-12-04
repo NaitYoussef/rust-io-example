@@ -170,30 +170,7 @@ API poll, caractéristiques
 API poll, schéma
 ---
 
-```
-Avant ajout :
-+-----------------------------+
-|         poll fds[]          |
-|-----------------------------|
-|  [ fd1 ]  [ fd2 ]  [ fd3 ]  |  <-- tableau de pollfd surveillés
-+-----------------------------+
-
-Ajout d'une nouvelle socket (fd4) :
-        |
-        v
-Ajout de fd4 dans le tableau fds[]
-        |
-        v
-poll([fd1, fd2, fd3, fd4])
-        |
-        v
-Après ajout :
-+--------------------------------------+
-|         poll fds[]                   |
-|--------------------------------------|
-|  [ fd1 ]  [ fd2 ]  [ fd3 ]  [ fd4 ]  |  <-- tableau de pollfd surveillés
-+--------------------------------------+
-```
+![img.png](schema/poll_add-1.png)
 
 <!-- end_slide -->
 API poll, schéma
@@ -233,22 +210,7 @@ API epoll - Fin d'une requête
 API epoll - Attendre un évènement sur un file descriptor
 ---
 
-```
-+--------------------------------------+
-|         epoll instance   EP1         |
-|--------------------------------------|
-|  [ fd1 ]  [ fd2 ]  [ fd3 ]  [ fd4 ]  |  <-- file descriptors surveillés
-+--------------------------------------+
-
-Attendre l'arrivée d'un évènement sur (fd3) :
-        |
-        v
-epoll_wait(EP1)
-        |
-        v     
-Après écriture sur fd3 le retour de la epoll_wait(EP1) : [ fd3 ]
-
-```
+![img.png](schema/epoll_read-1.png)
 <!-- end_slide -->
 API epoll
 ---
@@ -275,20 +237,16 @@ Existe depuis java 1.6 avec la classe ```SelectorProvider```.
 
 ``` java
     Selector selector = Selector.open();
-
     ServerSocketChannel serverChannel = ServerSocketChannel.open();
     serverChannel.configureBlocking(false);
     serverChannel.bind(new InetSocketAddress("0.0.0.0", 8000));
-
     serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 
     while (true) {
       // Attente des événements
       selector.select();
-
       // Récupération des clés prêtes
       Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
-
       while (keys.hasNext()) {
         SelectionKey key = keys.next();
         keys.remove();
@@ -346,7 +304,6 @@ API IO uring, caractéristiques
 API IO uring (schéma)
 ---
 ```
-+-------------------------------------------------------+
 |                          user space                   |
 |               +-------------------------------+       |
 |               |     read / write, liburing    |       |
@@ -365,75 +322,19 @@ API IO uring (schéma)
 |                     | readv  |                        |
 |                     +--------+                        |
 |                    Kernel space                       |
-+-------------------------------------------------------+
 ```
 <!-- end_slide -->
 API IO uring (schéma)
 ---
-```
-    Demande d'écriture sur fd3 (fd3) :
-        |
-        v
-    ring_submit([OP_WRITE,fd3,UD:B], buf)
-        |
-        |
-        v
-+--------------------------------------------+
-|         IO uring instance SQ               |
-|--------------------------------------------|
-|  [ WRITE:fd3, UD:B ]                       |  <-- Opération demandé sur la submission queue
-+--------------------------------------------+
-        |
-        v
-    ring_submit_and_wait()
-        |
-        v
-    Après écriture sur fd3 (fd3) :
-        |
-        v
-+-----------------------------+
-|  IO uring instance CQ       |
-|-----------------------------|
-|  [ UD:B,20 ]                |  <-- Résultat des opérations exécutées dans la completion queue
-+-----------------------------+
-```
+![img.png](schema/io-uring_add-1.png)
 <!-- end_slide -->
 API IO uring
 ---
 <!-- column_layout: [1, 1] -->
 
 <!-- column: 0 -->
-```
-          +-------------------+                  +-------------------+
-          |     Client 1      |                  |     Client 2      |
-          |-------------------|                  |-------------------|
-          | socket(fd=3)      |                  |      socket(fd=3) |
-          +-------------------+                  +-------------------+
-                        \                            /
-                         \                          /
-                          \                        /
-                           \                      /
-                            \                    /
-                             \                  /
-                              \                /
-                               \              /
-                                \            /
-                                 \          /
-                                  \        /
-                                   \      /
-                                    \    /
-                                     \  /
-                                      \
-                             +-------------------+
-                             |      Serveur      |
-                             |-------------------|
-                             | listen_fd = 3     |
-                             | client1_fd = 4    |  <-- lié à Client 1
-                             | client2_fd = 5    |  <-- lié à Client 2
-                             +-------------------+
 
-```
-
+![img.png](schema/exercice-multi-client-1.png)
 <!-- column: 1 -->
 
 ```

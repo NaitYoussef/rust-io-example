@@ -14,8 +14,9 @@ sequenceDiagram
    Note right of S: fd surveillés : [fd1,fd2,fd3]
    activate S
    C->>S: send("Hello")
-   Note over S: epoll_ctl(ADD, fd4)
-   Note right of S: fd surveillés : [fd1,fd2,fd3,fd4]
+   Note over S: epoll_wait() => [fd3]<br/>read(3, "Hello")<br/>write(3, "Hi")
+   S->>C: send("Hi")
+   Note right of S: fd surveillés : [fd1,fd2,fd3]
    deactivate S
 
 ```

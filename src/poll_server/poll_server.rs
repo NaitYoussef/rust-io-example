@@ -25,9 +25,8 @@ fn main() -> io::Result<()> {
     let mut connections = Connection::new();
     println!("Poll server started !");
     loop {
-        let mut poll_fds_clone = poll_fds.clone();
-        poll(&mut poll_fds_clone);
-        for pfd in &poll_fds_clone {
+        poll(&mut poll_fds);
+        for pfd in &poll_fds.clone() {
             if (pfd.revents & libc::POLLIN) != 0 && pfd.fd == listener.as_raw_fd() {
                 match listener.accept() {
                     Ok((stream, addr)) => {
