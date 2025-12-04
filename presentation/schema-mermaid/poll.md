@@ -1,0 +1,62 @@
+```mermaid
+%%{ init: {"theme": "default",
+           "themeVariables": { "wrap": "false", 'fontSize': '24px' },
+           "flowchart": { "curve": "default",
+                          "markdownAutoWrap":"false",
+                          "wrappingWidth": "600" }
+           }
+}%%
+sequenceDiagram
+
+   participant C as Client
+   participant S as Server
+
+   S->>S: listen()
+   Note over S: listen_fd=3
+   Note right of S: poll([3]) ⏳
+   C->>S: connect() send a request 
+   activate S
+   Note over S: poll() => [3*]<br/>accept() -> client_fd=4
+   S->>C: accept ok
+   Note over C: socket(fd=3)<br/>connecté à srv:port
+   Note over S: listen(fd=3)<br/>client_fd=4 lié au client
+   Note right of S: poll([3,4]) ⏳
+   C->>S: send("Hello")
+   Note over S: poll() => [3, 4*]<br/>read(4, "Hello")<br/>write(4, "Hi")
+   S->>C: send("Hi")
+   Note right of S: poll([3,4]) ⏳
+   C->>S: close()
+   Note over S: poll() => [3, 4*]<br/>close(client_fd=4)
+   Note right of S: poll([3]) ⏳
+   deactivate S
+
+```
+```
+Client 1                              Serveur
+|                                      |
+|                                      |
+|                             listen() -> listen_fd=3
+|                                      |
+|                             poll([3]) ⏳        
+|                                      |
+|                                      |
+|-------------- connect() ------------>|
+|                             poll([3]) ====> [3*]
+|                             accept() -> client_fd=4
+|<------------- accept() ok -----------|
+|                                      |
+|   socket(fd=3)                       |  listen_fd=3
+|   connecté à srv:port                |  client_fd=4 lié au client
+|                              poll([3, 4]) ⏳
+|                                      |
+|----------- send("Hello") ----------->|
+|                              poll([3, 4]) ====> [3, 4*]        
+|<---------- send("Hi!") --------------|
+|                              poll([3, 4]) ⏳         
+|                                      |
+|------------ close() ---------------->|
+|                              poll([3, 4]) ====> [3, 4*]        
+|                              close(client_fd=4)
+|                              poll([3]) ⏳       
+|                                      |
+```

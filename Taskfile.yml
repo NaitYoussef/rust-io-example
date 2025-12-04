@@ -1,0 +1,26 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
+
+  compile-image:
+    dir: presentation/schema-mermaid
+    # sources:
+      # - websocket
+      # - sse
+    cmds:
+      - for: [websocket, sse, vfs, exercice, exercice-multi-client, exemple-standart, epoll, epoll_add,epoll_del, poll, epoll_read]
+        cmd: podman run --userns keep-id --user $(id -u) --rm -v ..:/data:z ghcr.io/mermaid-js/mermaid-cli/mermaid-cli -i schema-mermaid/{{.ITEM}}.md -o schema/{{.ITEM}}.png -b transparent
+    preconditions:
+      - command -v podman
+      - test -d ../schema
+    generates:
+      - ../schema/{{.ITEM}}-1.png

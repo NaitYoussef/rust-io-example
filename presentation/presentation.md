@@ -11,6 +11,8 @@ Speakers
 
 <!-- column_layout: [1, 1] -->
 
+<!-- alignment: center -->
+
 <!-- column: 0 -->
 
 ![](images/jean-eudes.jpeg)
@@ -54,31 +56,10 @@ Le WEB aujourd'hui
 ----
 <!-- column_layout: [1, 1] -->
 <!-- column: 0 -->
-```
-          ┌─────────────┐
-          │ WebSocket   │
-          │   Server    │
-          └─────^───────┘
-                |
-      ┌─────────|─────────┐
-      │         |         │
-┌─────v─────┐┌──v─────┐┌──v─────┐
-│ Client 1  ││Client 2││Client 3│
-└───────────┘└────────┘└────────┘
-```
+![img.png](schema/websocket-1.png)
 <!-- column: 1 -->
-```
-          ┌─────────────┐
-          │     SSE     │
-          │   Server    │
-          └─────|───────┘
-                |
-      ┌─────────|─────────┐
-      │         |         │
-┌─────v─────┐┌──v─────┐┌──v─────┐
-│ Client 1  ││Client 2││Client 3│
-└───────────┘└────────┘└────────┘
-```
+
+![img.png](schema/sse-1.png)
 <!-- end_slide -->
 Introduction
 ---
@@ -149,23 +130,7 @@ Objets linux représentés par un file descriptor
 Linux Virtual File System
 ---
 
-```
-+----------------+         +----------------+         +---------------------------+
-|  Appels        |         |      VFS       |         |  +--------------------+   |
-|  systèmes      |         | (Virtual File  |         |  | Fichier sur disque |   |
-|                |         |   System)      |         |  +--------------------+   |
-|  open          | ----->  |                | ----->  |  +--------------------+   |
-|  read/write    |         |                | ----->  |  | Socket réseau      |   |
-|  fchmod        |         |                | ----->  |  +--------------------+   |
-|  ...           |         |                | ----->  |  +--------------------+   |
-+----------------+         +----------------+         |  | Pipe / FIFO        |   |
-                                                      |  +--------------------+   |
-                                                      |  +--------------------+   |
-                                                      |  | Fichier virtuel    |   |
-                                                      |  | (/proc, /dev)      |   |
-                                                      |  +--------------------+   |
-                                                      +---------------------------+
-```
+![img.png](schema/vfs-1.png)
 
 <!-- end_slide -->
 
@@ -178,85 +143,16 @@ Everything is a filedescriptor
 Exercice
 ---
 
- ```          
-+----------------+         +----------------+ 
-|  Serveur       |         |      Client    |
-|                |         |                | 
-|                | connect |                | 
-|                | <-----  |                | 
-|                | text    |                | 
-|                | ----->  |                | 
-|                | text    |                | 
-|                | <-----  |                | 
-|                | disco   |                | 
-|                | --//--  |                | 
-+----------------+         +----------------+ 
-```
+![img.png](schema/exercice-1.png)
 <!-- end_slide -->
 Exercice
 ---
 <!-- column_layout: [1, 1] -->
 <!-- column: 0 -->
 
-```
-          +-------------------+                  +-------------------+
-          |     Client 1      |                  |     Client 2      |
-          |-------------------|                  |-------------------|
-          | socket(fd=3)      |                  |      socket(fd=3) |
-          +-------------------+                  +-------------------+
-                        \                            /
-                         \                          /
-                          \                        /
-                           \                      /
-                            \                    /
-                             \                  /
-                              \                /
-                               \              /
-                                \            /
-                                 \          /
-                                  \        /
-                                   \      /
-                                    \    /
-                                     \  /
-                                      \/
-                             +-------------------+
-                             |      Serveur      |
-                             |-------------------|
-                             | listen_fd = 3     |
-                             | client1_fd = 4    |  <-- lié à Client 1
-                             | client2_fd = 5    |  <-- lié à Client 2
-                             +-------------------+
-
-```
+![img.png](schema/exercice-multi-client-1.png)
 <!-- column: 1 -->
-```
-Client 1                             Serveur
-|                                      |
-|                                      |
-|                             listen() -> listen_fd=3
-|                                      |
-|                                      |
-|                                      |
-|                                      |
-|-------------- connect() ------------>|
-|                                      |
-|                             accept() -> client_fd=4
-|<------------- accept() ok -----------|
-|                                      |
-|   socket(fd=3)                       |  listen_fd=3
-|   connecté à srv:port                |  client_fd=4 lié au client
-|                                      |
-|----------- send("Hello") ----------->|
-|                                      |
-|<---------- send("Hi!") --------------|
-|                                      |
-|                                      |
-|------------ close() ----------------->|
-|                                      |
-|                          close(client_fd=4)
-|                                      |
-|                                      |
-```
+![img.png](schema/exemple-standart-1.png)
 <!-- end_slide -->
 <!-- jump_to_middle -->
 Demo
@@ -305,68 +201,9 @@ API poll, schéma
 <!-- column_layout: [1, 1] -->
 
 <!-- column: 0 -->
-```
-          +-------------------+                  +-------------------+
-          |     Client 1      |                  |     Client 2      |
-          |-------------------|                  |-------------------|
-          | socket(fd=3)      |                  |      socket(fd=3) |
-          +-------------------+                  +-------------------+
-                        \                            /
-                         \                          /
-                          \                        /
-                           \                      /
-                            \                    /
-                             \                  /
-                              \                /
-                               \              /
-                                \            /
-                                 \          /
-                                  \        /
-                                   \      /
-                                    \    /
-                                     \  /
-                                      \/
-                             +-------------------+
-                             |      Serveur      |
-                             |-------------------|
-                             | listen_fd = 3     |
-                             | client1_fd = 4    |  <-- lié à Client 1
-                             | client2_fd = 5    |  <-- lié à Client 2
-                             +-------------------+
-
-```
-
+![img.png](schema/exercice-multi-client-1.png)
 <!-- column: 1 -->
-
-```
-Client 1                              Serveur
-|                                      |
-|                                      |
-|                             listen() -> listen_fd=3
-|                                      |
-|                             poll([3]) ⏳        
-|                                      |
-|                                      |
-|-------------- connect() ------------>|
-|                             poll([3]) ====> [3*]
-|                             accept() -> client_fd=4
-|<------------- accept() ok -----------|
-|                                      |
-|   socket(fd=3)                       |  listen_fd=3
-|   connecté à srv:port                |  client_fd=4 lié au client
-|                              poll([3, 4]) ⏳
-|                                      |
-|----------- send("Hello") ----------->|
-|                              poll([3, 4]) ====> [3, 4*]        
-|<---------- send("Hi!") --------------|
-|                              poll([3, 4]) ⏳         
-|                                      |
-|------------ close() ---------------->|
-|                              poll([3, 4]) ====> [3, 4*]        
-|                              close(client_fd=4)
-|                              poll([3]) ⏳       
-|                                      |
-```
+![img.png](schema/poll-1.png)
 
 <!-- end_slide -->
 <!-- jump_to_middle -->
@@ -385,55 +222,13 @@ API epoll, caractéristiques
 API epoll - Réception d'une nouvelle requête
 ---
 
-```
-Avant ajout :
-+-----------------------------+
-|         epoll instance      |
-|-----------------------------|
-|  [ fd1 ]  [ fd2 ]  [ fd3 ]  |  <-- file descriptors surveillés
-+-----------------------------+
-
-Ajout d'une nouvelle socket (fd4) :
-        |
-        v
-epoll_ctl(ADD, fd4)
-        |
-        v
-
-Après ajout :
-+--------------------------------------+
-|         epoll instance               |
-|--------------------------------------|
-|  [ fd1 ]  [ fd2 ]  [ fd3 ]  [ fd4 ]  |  <-- file descriptors surveillés
-+--------------------------------------+
-```
+![img.png](schema/epoll_add-1.png)
 
 <!-- end_slide -->
 API epoll - Fin d'une requête
 ---
 
-```
-Avant suppression :
-+--------------------------------------+
-|         epoll instance               |
-|--------------------------------------|
-|  [ fd1 ]  [ fd2 ]  [ fd3 ]  [ fd4 ]  |  <-- file descriptors surveillés
-+--------------------------------------+
-
-Suppression d'une socket (fd3) :
-        |
-        v
-epoll_ctl(DEL, fd3)
-        |
-        v
-
-Après suppression :
-+-----------------------------+
-|         epoll instance      |
-|-----------------------------|
-|  [ fd1 ]  [ fd2 ]  [ fd4 ]  |  <-- file descriptors surveillés
-+-----------------------------+
-```
+![img.png](schema/epoll_del-1.png)
 <!-- end_slide -->
 API epoll - Attendre un évènement sur un file descriptor
 ---
@@ -460,71 +255,9 @@ API epoll
 <!-- column_layout: [1, 1] -->
 
 <!-- column: 0 -->
-```
-          +-------------------+                  +-------------------+
-          |     Client 1      |                  |     Client 2      |
-          |-------------------|                  |-------------------|
-          | socket(fd=3)      |                  |      socket(fd=3) |
-          +-------------------+                  +-------------------+
-                        \                            /
-                         \                          /
-                          \                        /
-                           \                      /
-                            \                    /
-                             \                  /
-                              \                /
-                               \              /
-                                \            /
-                                 \          /
-                                  \        /
-                                   \      /
-                                    \    /
-                                     \  /
-                                      \/
-                             +-------------------+
-                             |      Serveur      |
-                             |-------------------|
-                             | listen_fd = 3     |
-                             | client1_fd = 4    |  <-- lié à Client 1
-                             | client2_fd = 5    |  <-- lié à Client 2
-                             +-------------------+
-
-```
-
+![img.png](schema/exercice-multi-client-1.png)
 <!-- column: 1 -->
-
-```
-Client 1                              Serveur
-|                                      |
-|                                      |
-|                             listen() -> listen_fd=3
-|                                      |
-|                             epoll_ctl(ADD, 3)         
-|                             epoll_wait() ⏳        
-|                                      |
-|                                      |
-|-------------- connect() ------------>|
-|                             epoll_wait() ====> [3]
-|                             accept() -> client_fd=4
-|<------------- accept() ok -----------|
-|                                      |
-|   socket(fd=3)                       |  listen_fd=3
-|   connecté à srv:port                |  client_fd=4 lié au client
-|                              epoll_ctl(ADD, 4)
-|                              epoll_wait() ⏳  
-|                                      |
-|----------- send("Hello") ----------->|
-|                              epoll_wait() ====> [4]        
-|<---------- send("Hi!") --------------|
-|                              epoll_wait() ⏳         
-|                                      |
-|------------ close() ---------------->|
-|                              epoll_wait() ====> [4]        
-|                              close(client_fd=4)
-|                              epoll_ctl(DEL, 4)        
-|                              epoll_wait() ⏳
-|                                      |
-```
+![img.png](schema/epoll-1.png)
 <!-- end_slide -->
 <!-- jump_to_middle -->
 Demo
@@ -612,32 +345,27 @@ API IO uring, caractéristiques
 <!-- end_slide -->
 API IO uring (schéma)
 ---
-
 ```
-+---------------------------------------------------------------------+
-|                              user space                             |
-|                                                                     |
-|                   +-------------------------------+                 |
-|                   |     read / write, liburing    |                 |
-|                   +-------------------------------+                 |
-|                        |                    ^                       |
-|                        v                    |                       |
-|        +-------------------+    +-------------------+               |
-|        | Submission Queue  |    | Completion Queue  |               |
-|        |   [SQE 1]         |    |   [CQE 1]         |               |
-|--------|   [SQE 2]         |----|   [CQE 2]         |---------------|
-|        |   [SQE 3]         |    |   [CQE 3]         |               |
-|        +-------------------+    +-------------------+               |
-|                |                        ^                           |
-|                |                        |                           |
-|                +----------+  +----------+                           |
-|                           v  |                                      |
-|                         +--------+                                  |
-|                         | readv  |                                  |
-|                         +--------+                                  |
-|                                                                     |
-|                        Kernel space                                 |
-+---------------------------------------------------------------------+
++-------------------------------------------------------+
+|                          user space                   |
+|               +-------------------------------+       |
+|               |     read / write, liburing    |       |
+|               +-------------------------------+       |
+|                    |                    ^             |
+|                    v                    |             |
+|    +-------------------+    +-------------------+     |
+|    | Submission Queue  |    | Completion Queue  |     |
+|    |   [SQE 1]         |    |   [CQE 1]         |     |
+|----|   [SQE 2]         |----|   [CQE 2]         |-----|
+|    +-------------------+    +-------------------+     |
+|            |                        ^                 |
+|            +----------+  +----------+                 |
+|                       v  |                            |
+|                     +--------+                        |
+|                     | readv  |                        |
+|                     +--------+                        |
+|                    Kernel space                       |
++-------------------------------------------------------+
 ```
 <!-- end_slide -->
 API IO uring (schéma)
@@ -646,7 +374,7 @@ API IO uring (schéma)
     Demande d'écriture sur fd3 (fd3) :
         |
         v
-    ring_submit([OP_WRITE,fd3,UD:X], buf)
+    ring_submit([OP_WRITE,fd3,UD:B], buf)
         |
         |
         v
@@ -731,13 +459,13 @@ Client 1                              Serveur
 |----------- send("Hello") ----------->|
 |                              submit_and_wait() ====> [(UD:B, 5)] le 5 correspond à la taille à lire du buffer      
 |                              ring_submissing(Accept:3, UD:A)
-                               ring_submissing(Write:4, UD:C)
-                                       |
-                               ring_submit_and_wait() ⏳
+|                              ring_submissing(Write:4, UD:C)
+|                                      |
+|                              ring_submit_and_wait() ⏳
 |<---------- send("Hi!") --------------|
 |                              submit_and_wait() ====> [(UD:C)] événement de retour de notre écrite
-                               ring_submission(READ:4, UD:B)     
-                               submit_and_wait() ⏳
+|                              ring_submission(READ:4, UD:B)     
+|                              submit_and_wait() ⏳
 |                                      |
 |------------ close() ---------------->|
 |                              submit_and_wait() ====> [UD:B, 0]       
