@@ -16,7 +16,6 @@ enum OpType {
     Accept,
     Read(i32),
     Write(i32),
-    Close,
 }
 
 // use a tryFrom implementation to convert from u64 to OpType, externalize OpType in specific module
@@ -42,7 +41,6 @@ impl From<OpType> for u64 {
             OpType::Accept => 1u64 << 32,
             OpType::Read(fd) => (2u64 << 32) | (fd as u32 as u64),
             OpType::Write(fd) => (3u64 << 32) | (fd as u32 as u64),
-            OpType::Close => 4u64 << 32,
         }
     }
 }
@@ -101,9 +99,6 @@ fn main() -> std::io::Result<()> {
                 OpType::Write(fd) => {
                     println!("Write finished on fd={fd}");
                     submit_read(&mut ring, fd, connections.get_buffer(fd));
-                },
-                OpType::Close => {
-                    println!("Close finished");
                 }
             }
         }
@@ -148,11 +143,9 @@ fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: &mut Vec<u8>) {
 }
 
 fn close_fd(ring: &mut IoUring, client_fd: i32) {
-    let op_type = OpType::Close;
 
     let close = opcode::Close::new(types::Fd(client_fd))
-        .build()
-        .user_data(u64::from(op_type));
+        .build();
 
     unsafe {
         ring.submission().push(&close).expect("submission failed");
