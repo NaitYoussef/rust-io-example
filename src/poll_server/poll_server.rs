@@ -21,7 +21,11 @@ fn main() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
     listener.set_nonblocking(true)?;
     let poll_fd = create_pool_fd(listener.as_raw_fd());
+
+    // liste des fds sotckés dans le programmes
     let mut poll_fds = vec![poll_fd];
+
+
     let mut connections = Connection::new();
     println!("Poll server started !");
     loop {
