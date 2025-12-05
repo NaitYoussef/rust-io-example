@@ -75,7 +75,7 @@ Api FileInputStream en java
 
 <!-- jump_to_middle -->
 
-![img.png](images/api_inpustream.png)
+![img.png](images/inputstream.png)
 
 <!-- end_slide -->
 
@@ -390,7 +390,18 @@ Conclusion
 
 <!-- end_slide -->
 
-![](images/qrcode.jpeg)
 
 Merci
 ===
+
+<!-- column_layout: [1, 1] -->
+
+<!-- alignment: center -->
+
+<!-- column: 0 -->
+
+![](images/devfest_dijon.png)
+FeedBack
+<!-- column: 1 -->
+![](images/lien_presentation.png)
+Lien vers la présentation
