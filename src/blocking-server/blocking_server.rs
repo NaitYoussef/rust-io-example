@@ -7,24 +7,34 @@ const DISCONNECTED: usize = 0;
 
 fn server_main(listener: TcpListener) -> io::Result<()> {
     println!("Blocking server started!");
+    listener.set_nonblocking(true)?;
     loop {
-        let (mut stream, addr) = listener.accept()?;
-        println!("Accepted connection from {addr:?} fd {}", stream.as_raw_fd());
-        stream.write_all("Hello from poll server\n".to_string().as_bytes())?;
-        let mut buf = [0u8; 1024];
-        loop {
+        if let Ok((mut stream, addr)) = listener.accept() {
+            println!(
+                "Accepted connection from {addr:?} fd {}",
+                stream.as_raw_fd()
+            );
+            stream.write_all("Hello from poll server\n".to_string().as_bytes())?;
+            let mut buf = [0u8; 1024];
+            stream.set_nonblocking(true)?;
             match stream.read(&mut buf) {
                 Ok(DISCONNECTED) => {
                     println!("Client {} disconnected", stream.as_raw_fd());
-                    break;
                 }
                 Ok(n) => {
-                    println!("Received {} from {}", String::from_utf8_lossy(&buf[..n]).replace('\n', ""), stream.as_raw_fd());
-                    stream.write_all("Blocking server received your message !\n".to_string().as_bytes())?;
+                    println!(
+                        "Received {} from {}",
+                        String::from_utf8_lossy(&buf[..n]).replace('\n', ""),
+                        stream.as_raw_fd()
+                    );
+                    stream.write_all(
+                        "Blocking server received your message !\n"
+                            .to_string()
+                            .as_bytes(),
+                    )?;
                 }
                 Err(e) => {
-                    println!("Error reading from client: {} {:?}",stream.as_raw_fd(), e);
-                    break;
+                    println!("Error reading from client: {} {:?}", stream.as_raw_fd(), e);
                 }
             };
         }

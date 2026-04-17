@@ -30,8 +30,10 @@ fn main() -> io::Result<()> {
     println!("Poll server started !");
     loop {
         poll(&mut poll_fds);
-        for pfd in &poll_fds.clone() {
-            if (pfd.revents & libc::POLLIN) != 0 && pfd.fd == listener.as_raw_fd() {
+        let cloned_fds = poll_fds.clone();
+        let filtered_fds: Vec<pollfd> = cloned_fds.into_iter().filter(|pfd| pfd.revents & libc::POLLIN != 0).collect();
+        for pfd in &filtered_fds {
+            if pfd.fd == listener.as_raw_fd() {
                 match listener.accept() {
                     Ok((stream, addr)) => {
                         println!("Accepted connection from {:?} fd {}", addr, stream.as_raw_fd());
@@ -43,7 +45,7 @@ fn main() -> io::Result<()> {
                         println!("Accept error: {e:?}");
                     }
                 }
-            } else if (pfd.revents & libc::POLLIN) != 0 {
+            } else {
                 match connections.receive_data_and_respond(&pfd.fd.as_raw_fd()) {
                     None | Some(ConnectionStatus::Established) => {}
                     Some(ConnectionStatus::Closed) => {

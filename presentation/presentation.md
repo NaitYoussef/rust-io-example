@@ -187,6 +187,20 @@ API poll, schéma
 Demo
 ===
 <!-- end_slide -->
+Trade-offs
+---
+
+OK
+
+* Traitement des sockets client que lorsqu'on reçoit des événements (accept, read)
+
+KO
+
+* Compléxité en O(n) parcourt intégrale de toute la liste des fds
+* Copie Userspace <-> Kernelspace à chaque appel à poll
+* Enrigistrement des fds côté kernel à chaque appel poll
+
+<!-- end_slide -->
 API epoll, caractéristiques
 ---
 
@@ -225,7 +239,18 @@ API epoll
 Demo
 ===
 <!-- end_slide -->
+Trade-offs
+---
 
+OK
+
+* Compléxité en O(1) intérvetion uniquement sur les fds concernés
+* Enrigistrement des fds à surveiller une seule fois
+
+KO
+
+* Les appels à read et write provequent des copies Userspace <-> Kernelspace
+<!--- end_slide -->
 API poll et epoll en java
 ---
 
@@ -319,42 +344,7 @@ API IO uring
 ![img.png](schema/exercice-multi-client-1.png)
 <!-- column: 1 -->
 
-```
-Client 1                              Serveur
-|                                      |
-|                                      |
-|                             listen() -> listen_fd=3
-|                                      |
-|                             ring_submissing(Accept:3, UD:A)         
-|                             submit_and_wait() ⏳        
-|                                      |
-|                                      |
-|-------------- connect() ------------>|
-|                             submit_and_wait() ====> [(UD:A, 4)]
-|<------------- accept() ok -----------|
-|                                      |
-|   socket(fd=3)                       |  listen_fd=3
-|   connecté à srv:port                |  client_fd=4 lié au client                           
-|                              ring_submissing(Accept:3, UD:A)
-|                              ring_submission(READ:4, UD:B)
-|                              ring_submit_and_wait() ⏳
-|                                      |
-|----------- send("Hello") ----------->|
-|                              submit_and_wait() ====> [(UD:B, 5)] le 5 correspond à la taille à lire du buffer      
-|                              ring_submissing(Accept:3, UD:A)
-|                              ring_submissing(Write:4, UD:C)
-|                                      |
-|                              ring_submit_and_wait() ⏳
-|<---------- send("Hi!") --------------|
-|                              submit_and_wait() ====> [(UD:C)] événement de retour de notre écrite
-|                              ring_submission(READ:4, UD:B)     
-|                              submit_and_wait() ⏳
-|                                      |
-|------------ close() ---------------->|
-|                              submit_and_wait() ====> [UD:B, 0]       
-|                              close(client_fd=4)
-|                              submit_and_wait() ⏳
-```
+![img.png](schema/iouring-1.png)
 <!-- end_slide -->
 <!-- jump_to_middle -->
 Demo
@@ -367,7 +357,17 @@ Comparatif des performances (select - poll - epoll - kqueue)
 https://monkey.org/~provos/libevent/libevent-benchmark2.jpg
 
 <!-- end_slide -->
+Trade-offs
+---
 
+OK
+
+* Pas de copie Kernelspace <-> Userspace
+
+KO
+
+* Un peu plus compliqué à mettre en place côté code
+<!-- end_slide -->
 Comparatif des performances (iouring)
 ---
 

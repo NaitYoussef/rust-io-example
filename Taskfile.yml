@@ -17,7 +17,7 @@ tasks:
       # - websocket
       # - sse
     cmds:
-      - for: [websocket, sse, vfs, exercice, exercice-multi-client, exemple-standart, epoll, epoll_add,epoll_del, poll, epoll_read, poll_add, io-uring_add]
+      - for: [websocket, sse, vfs, exercice, exercice-multi-client, exemple-standart, epoll, epoll_add,epoll_del, poll, epoll_read, poll_add, io-uring_add, iouring]
         cmd: podman run --userns keep-id --user $(id -u) --rm -v ..:/data:z ghcr.io/mermaid-js/mermaid-cli/mermaid-cli -i schema-mermaid/{{.ITEM}}.md -o schema/{{.ITEM}}.png -b transparent
     preconditions:
       - command -v podman
