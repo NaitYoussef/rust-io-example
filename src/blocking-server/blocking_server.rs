@@ -3,7 +3,7 @@ mod client_socket;
 use std::io;
 use std::net::TcpListener;
 
-use client_socket::Connection;
+use client_socket::{Connection, ConnectionStatus};
 use std::os::fd::AsRawFd;
 
 fn server_main(listener: TcpListener) -> io::Result<()> {
@@ -29,7 +29,25 @@ fn server_main(listener: TcpListener) -> io::Result<()> {
             }
         }
 
-        connections.read_and_respond();
+        let mut clients_to_remove = Vec::new();
+
+        for (index, client) in &mut connections {
+            match client.receive_data_and_respond() {
+                Ok(ConnectionStatus::Established) => {}
+                Ok(ConnectionStatus::Closed) => {
+                    let fd = client.fd();
+                    println!("Client {fd} disconnected");
+                    clients_to_remove.push(index);
+                }
+                Err(e) => {
+                    let fd = client.fd();
+                    println!("Error reading from client: {} {:?}", fd, e);
+                    clients_to_remove.push(index);
+                }
+            }
+        }
+
+        connections.remove_clients_at(clients_to_remove);
     }
 }
 

@@ -3,8 +3,12 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::os::fd::AsRawFd;
 
+pub struct ClientSocket {
+    stream: TcpStream,
+}
+
 pub struct Connection {
-    clients: Vec<TcpStream>,
+    clients: Vec<ClientSocket>,
 }
 
 pub enum ConnectionStatus {
@@ -19,52 +23,56 @@ impl Connection {
         }
     }
 
+    pub fn remove_clients_at(&mut self, mut indexes: Vec<usize>) {
+        indexes.sort_unstable();
+
+        for index in indexes.into_iter().rev() {
+            self.clients.swap_remove(index);
+        }
+    }
+
     pub fn accept_new_client(&mut self, mut stream: TcpStream) -> io::Result<()> {
         stream
             .set_nonblocking(true)
             .expect("Failed to set non-blocking mode on the stream");
         send_message(&mut stream, b"Hello from blocking server\n")?;
-        self.clients.push(stream);
+        self.clients.push(ClientSocket { stream });
         Ok(())
-    }
-
-    pub fn read_and_respond(&mut self) {
-        let mut index = 0;
-        while index < self.clients.len() {
-            match receive_data_and_respond(&mut self.clients[index]) {
-                Ok(ConnectionStatus::Established) => {
-                    index += 1;
-                }
-                Ok(ConnectionStatus::Closed) => {
-                    let fd = self.clients[index].as_raw_fd();
-                    println!("Client {fd} disconnected");
-                    self.clients.swap_remove(index);
-                }
-                Err(e) => {
-                    let fd = self.clients[index].as_raw_fd();
-                    println!("Error reading from client: {} {:?}", fd, e);
-                    self.clients.swap_remove(index);
-                }
-            }
-        }
     }
 }
 
-fn receive_data_and_respond(stream: &mut TcpStream) -> io::Result<ConnectionStatus> {
-    let mut buf = [0u8; 1024];
-    match stream.read(&mut buf) {
-        Ok(0) => Ok(ConnectionStatus::Closed),
-        Ok(n) => {
-            println!(
-                "Received {} from {}",
-                String::from_utf8_lossy(&buf[..n]).replace('\n', ""),
-                stream.as_raw_fd()
-            );
-            send_message(stream, b"Blocking server received your message !\n")?;
-            Ok(ConnectionStatus::Established)
+impl<'a> IntoIterator for &'a mut Connection {
+    type Item = (usize, &'a mut ClientSocket);
+    type IntoIter = std::iter::Enumerate<std::slice::IterMut<'a, ClientSocket>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.clients.iter_mut().enumerate()
+    }
+}
+
+impl ClientSocket {
+    pub fn fd(&self) -> i32 {
+        self.stream.as_raw_fd()
+    }
+
+    pub fn receive_data_and_respond(&mut self) -> io::Result<ConnectionStatus> {
+        let mut buf = [0u8; 1024];
+        match self.stream.read(&mut buf) {
+            Ok(0) => Ok(ConnectionStatus::Closed),
+            Ok(n) => {
+                println!(
+                    "Received {} from {}",
+                    String::from_utf8_lossy(&buf[..n]).replace('\n', ""),
+                    self.fd()
+                );
+                send_message(&mut self.stream, b"Blocking server received your message !\n")?;
+                Ok(ConnectionStatus::Established)
+            }
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                Ok(ConnectionStatus::Established)
+            }
+            Err(e) => Err(e),
         }
-        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(ConnectionStatus::Established),
-        Err(e) => Err(e),
     }
 }
 
