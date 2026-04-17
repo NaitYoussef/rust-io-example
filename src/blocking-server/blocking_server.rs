@@ -1,43 +1,35 @@
-use std::io;
-use std::io::prelude::*;
-use std::net::TcpListener;
-use std::os::fd::AsRawFd;
+mod client_socket;
 
-const DISCONNECTED: usize = 0;
+use std::io;
+use std::net::TcpListener;
+
+use client_socket::Connection;
+use std::os::fd::AsRawFd;
 
 fn server_main(listener: TcpListener) -> io::Result<()> {
     println!("Blocking server started!");
     listener.set_nonblocking(true)?;
+    let mut connections = Connection::new();
+
     loop {
-        if let Ok((mut stream, addr)) = listener.accept() {
-            println!(
-                "Accepted connection from {addr:?} fd {}",
-                stream.as_raw_fd()
-            );
-            stream.write_all("Hello from poll server\n".to_string().as_bytes())?;
-            let mut buf = [0u8; 1024];
-            stream.set_nonblocking(true)?;
-            match stream.read(&mut buf) {
-                Ok(DISCONNECTED) => {
-                    println!("Client {} disconnected", stream.as_raw_fd());
-                }
-                Ok(n) => {
+        loop {
+            match listener.accept() {
+                Ok((stream, addr)) => {
                     println!(
-                        "Received {} from {}",
-                        String::from_utf8_lossy(&buf[..n]).replace('\n', ""),
+                        "Accepted connection from {addr:?} fd {}",
                         stream.as_raw_fd()
                     );
-                    stream.write_all(
-                        "Blocking server received your message !\n"
-                            .to_string()
-                            .as_bytes(),
-                    )?;
+                    connections.accept_new_client(stream)?;
                 }
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
-                    println!("Error reading from client: {} {:?}", stream.as_raw_fd(), e);
+                    println!("Accept error: {e:?}");
+                    break;
                 }
-            };
+            }
         }
+
+        connections.read_and_respond();
     }
 }
 
