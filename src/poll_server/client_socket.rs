@@ -46,7 +46,7 @@ impl Connection {
                         String::from_utf8_lossy(&buf[..n])
                     );
                     stream
-                        .write_all(b"Poll server recieved your message\n")
+                        .write_all(b"Poll server received your message\n")
                         .unwrap();
                     Some(Established)
                 }

@@ -1,15 +1,14 @@
-mod client_socket;
-
 use std::io;
 use std::net::TcpListener;
 
-use client_socket::{Connection, ConnectionStatus};
 use std::os::fd::AsRawFd;
+use rut_io_example::commons::{ClientSocket, ConnectionStatus};
 
 fn server_main(listener: TcpListener) -> io::Result<()> {
     println!("Blocking server started!");
     listener.set_nonblocking(true)?;
-    let mut connections = Connection::new();
+
+    let mut clients_socket: Vec<ClientSocket> = Vec::new();
 
     loop {
         loop {
@@ -19,7 +18,8 @@ fn server_main(listener: TcpListener) -> io::Result<()> {
                         "Accepted connection from {addr:?} fd {}",
                         stream.as_raw_fd()
                     );
-                    connections.accept_new_client(stream)?;
+                    let socket = ClientSocket::accept_new_client(stream)?;
+                    clients_socket.push(socket);
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
@@ -29,25 +29,25 @@ fn server_main(listener: TcpListener) -> io::Result<()> {
             }
         }
 
-        let mut clients_to_remove = Vec::new();
-
-        for (index, client) in &mut connections {
+        let mut index = 0;
+        while index < clients_socket.len() {
+            let client = &mut clients_socket[index];
             match client.receive_data_and_respond() {
-                Ok(ConnectionStatus::Established) => {}
+                Ok(ConnectionStatus::Established) => {
+                    index += 1;
+                }
                 Ok(ConnectionStatus::Closed) => {
                     let fd = client.fd();
                     println!("Client {fd} disconnected");
-                    clients_to_remove.push(index);
+                    clients_socket.swap_remove(index);
                 }
                 Err(e) => {
                     let fd = client.fd();
                     println!("Error reading from client: {} {:?}", fd, e);
-                    clients_to_remove.push(index);
+                    clients_socket.swap_remove(index);
                 }
             }
         }
-
-        connections.remove_clients_at(clients_to_remove);
     }
 }
 

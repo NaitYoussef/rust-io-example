@@ -7,22 +7,13 @@ use std::io;
 use std::net::TcpListener;
 use std::os::fd::{AsRawFd, RawFd};
 
-fn poll(fds: &mut Vec<pollfd>) {
-    unsafe {
-        libc::poll(
-            fds.as_mut_ptr(),
-            fds.len() as libc::nfds_t,
-            -1 as libc::c_int,
-        );
-    }
-}
 
 fn main() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
     listener.set_nonblocking(true)?;
     let poll_fd = create_pool_fd(listener.as_raw_fd());
 
-    // liste des fds sotckés dans le programmes
+    // liste des fds stockés dans le programme
     let mut poll_fds = vec![poll_fd];
 
 
@@ -56,6 +47,16 @@ fn main() -> io::Result<()> {
                 }
             }
         }
+    }
+}
+
+fn poll(fds: &mut Vec<pollfd>) {
+    unsafe {
+        libc::poll(
+            fds.as_mut_ptr(),
+            fds.len() as libc::nfds_t,
+            -1 as libc::c_int,
+        );
     }
 }
 

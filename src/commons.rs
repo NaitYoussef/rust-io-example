@@ -7,50 +7,20 @@ pub struct ClientSocket {
     stream: TcpStream,
 }
 
-pub struct Connection {
-    clients: Vec<ClientSocket>,
-}
-
 pub enum ConnectionStatus {
     Established,
     Closed,
 }
 
-impl Connection {
-    pub fn new() -> Self {
-        Connection {
-            clients: Vec::new(),
-        }
-    }
-
-    pub fn remove_clients_at(&mut self, mut indexes: Vec<usize>) {
-        indexes.sort_unstable();
-
-        for index in indexes.into_iter().rev() {
-            self.clients.swap_remove(index);
-        }
-    }
-
-    pub fn accept_new_client(&mut self, mut stream: TcpStream) -> io::Result<()> {
+impl ClientSocket {
+    pub fn accept_new_client(mut stream: TcpStream) -> io::Result<ClientSocket> {
         stream
             .set_nonblocking(true)
             .expect("Failed to set non-blocking mode on the stream");
-        send_message(&mut stream, b"Hello from blocking server\n")?;
-        self.clients.push(ClientSocket { stream });
-        Ok(())
+        write_message(&mut stream, b"Hello from blocking server\n")?;
+        Ok(ClientSocket { stream })
     }
-}
 
-impl<'a> IntoIterator for &'a mut Connection {
-    type Item = (usize, &'a mut ClientSocket);
-    type IntoIter = std::iter::Enumerate<std::slice::IterMut<'a, ClientSocket>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.clients.iter_mut().enumerate()
-    }
-}
-
-impl ClientSocket {
     pub fn fd(&self) -> i32 {
         self.stream.as_raw_fd()
     }
@@ -65,7 +35,7 @@ impl ClientSocket {
                     String::from_utf8_lossy(&buf[..n]).replace('\n', ""),
                     self.fd()
                 );
-                send_message(&mut self.stream, b"Blocking server received your message !\n")?;
+                write_message(&mut self.stream, b"Blocking server received your message !\n")?;
                 Ok(ConnectionStatus::Established)
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
@@ -76,7 +46,7 @@ impl ClientSocket {
     }
 }
 
-fn send_message(stream: &mut TcpStream, message: &[u8]) -> io::Result<()> {
+fn write_message(stream: &mut TcpStream, message: &[u8]) -> io::Result<()> {
     match stream.write(message) {
         Ok(_) => Ok(()),
         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
