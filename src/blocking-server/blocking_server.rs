@@ -2,7 +2,7 @@ use std::io;
 use std::net::TcpListener;
 
 use std::os::fd::AsRawFd;
-use rut_io_example::commons::{ClientSocket, ConnectionStatus};
+use rut_io_example::vfs::{ClientSocket, ConnectionStatus};
 
 fn server_main(listener: TcpListener) -> io::Result<()> {
     println!("Blocking server started!");

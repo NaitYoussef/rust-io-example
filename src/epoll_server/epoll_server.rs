@@ -1,11 +1,10 @@
-mod client_socket;
-
-use crate::client_socket::{Connection, ConnectionStatus};
 use libc::{
-    c_int, close, epoll_create1 as unix_epoll_create1, epoll_ctl as unix_epoll_ctl, epoll_event, epoll_wait as unix_epoll_wait,
-    EPOLLET, EPOLLIN, EPOLL_CTL_ADD,
-    EPOLL_CTL_DEL,
+    EPOLL_CTL_ADD, EPOLL_CTL_DEL, EPOLLET, EPOLLIN, c_int, close as unix_close,
+    epoll_create1 as unix_epoll_create1, epoll_ctl as unix_epoll_ctl, epoll_event,
+    epoll_wait as unix_epoll_wait,
 };
+use rut_io_example::vfs::{ClientSocket, ConnectionStatus};
+use std::collections::HashMap;
 use std::io::{self};
 use std::net::TcpListener;
 use std::os::fd::{AsRawFd, RawFd};
@@ -25,7 +24,7 @@ fn main() -> io::Result<()> {
 
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, listener.as_raw_fd(), &mut event);
 
-    let mut clients = Connection::new();
+    let mut clients: HashMap<RawFd, ClientSocket> = HashMap::new();
     let mut events = [epoll_event { events: 0, u64: 0 }; 1024];
 
     println!("Server epoll started !");
@@ -41,8 +40,9 @@ fn main() -> io::Result<()> {
                 loop {
                     match listener.accept() {
                         Ok((stream, addr)) => {
-                            let client_fd = stream.as_raw_fd();
-                            clients.accept_new_client(client_fd, stream);
+                            let socket = ClientSocket::accept_new_client(stream)?;
+                            let client_fd = socket.fd();
+                            clients.insert(client_fd, socket);
                             println!("Accepted connection from {addr:?} fd {client_fd}");
                             let mut ev = epoll_event {
                                 events: (EPOLLIN | EPOLLET) as u32,
@@ -61,19 +61,35 @@ fn main() -> io::Result<()> {
                 }
             } else {
                 // Données à lire sur un client
-                let status = clients.receive_data_and_respond(&fd);
+                let status = if let Some(client) = clients.get_mut(&fd) {
+                    client.receive_data_and_respond()
+                } else {
+                    continue;
+                };
+
                 match status {
-                    None | Some(ConnectionStatus::Established) => {}
-                    Some(ConnectionStatus::Closed) => {
+                    Ok(ConnectionStatus::Established) => {}
+                    Ok(ConnectionStatus::Closed) => {
                         println!("Client {fd} disconnected");
-                        unsafe {
-                            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, std::ptr::null_mut());
-                            close(fd);
-                        }
+                        clients.remove(&fd);
+                        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, std::ptr::null_mut());
+                        close(fd);
+                    }
+                    Err(e) => {
+                        println!("Error reading from client: {} {:?}", fd, e);
+                        clients.remove(&fd);
+                        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, std::ptr::null_mut());
+                        close(fd);
                     }
                 }
             }
         }
+    }
+}
+
+fn close(fd: RawFd) {
+    unsafe {
+        unix_close(fd);
     }
 }
 

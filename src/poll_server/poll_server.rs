@@ -1,12 +1,9 @@
-mod client_socket;
-
-use crate::client_socket::{Connection, ConnectionStatus};
-
 use libc::pollfd;
+use rut_io_example::vfs::{ClientSocket, ConnectionStatus};
+use std::collections::HashMap;
 use std::io;
 use std::net::TcpListener;
 use std::os::fd::{AsRawFd, RawFd};
-
 
 fn main() -> io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8000")?;
@@ -16,33 +13,49 @@ fn main() -> io::Result<()> {
     // liste des fds stockés dans le programme
     let mut poll_fds = vec![poll_fd];
 
-
-    let mut connections = Connection::new();
+    let mut clients_socket: HashMap<RawFd, ClientSocket> = HashMap::new();
     println!("Poll server started !");
     loop {
         poll(&mut poll_fds);
         let cloned_fds = poll_fds.clone();
-        let filtered_fds: Vec<pollfd> = cloned_fds.into_iter().filter(|pfd| pfd.revents & libc::POLLIN != 0).collect();
+
+        let filtered_fds: Vec<pollfd> = cloned_fds
+            .into_iter()
+            .filter(|pfd| pfd.revents & libc::POLLIN != 0)
+            .collect();
+
         for pfd in &filtered_fds {
             if pfd.fd == listener.as_raw_fd() {
                 match listener.accept() {
                     Ok((stream, addr)) => {
                         println!("Accepted connection from {:?} fd {}", addr, stream.as_raw_fd());
-                        let client_fd = create_pool_fd(stream.as_raw_fd());
+                        let socket = ClientSocket::accept_new_client(stream)?;
+                        let fd = socket.fd();
+                        let client_fd = create_pool_fd(fd);
                         poll_fds.push(client_fd);
-                        connections.accept_new_client(stream.as_raw_fd(), stream);
+                        clients_socket.insert(fd, socket);
                     }
                     Err(e) => {
                         println!("Accept error: {e:?}");
                     }
                 }
             } else {
-                match connections.receive_data_and_respond(&pfd.fd.as_raw_fd()) {
-                    None | Some(ConnectionStatus::Established) => {}
-                    Some(ConnectionStatus::Closed) => {
-                        let fd = pfd.fd.as_raw_fd();
+                let fd = pfd.fd.as_raw_fd();
+                let status = if let Some(client) = clients_socket.get_mut(&fd) {
+                    client.receive_data_and_respond()
+                } else {
+                    continue;
+                };
+
+                match status {
+                    Ok(ConnectionStatus::Established) => {}
+                    Ok(ConnectionStatus::Closed) => {
                         println!("Client {fd} disconnected");
-                        poll_fds.retain(|poll_fd| poll_fd.fd != fd.as_raw_fd());
+                        remove_client(&mut clients_socket, &mut poll_fds, fd);
+                    }
+                    Err(e) => {
+                        println!("Error reading from client: {} {:?}", fd, e);
+                        remove_client(&mut clients_socket, &mut poll_fds, fd);
                     }
                 }
             }
@@ -62,8 +75,17 @@ fn poll(fds: &mut Vec<pollfd>) {
 
 fn create_pool_fd(fd: RawFd) -> pollfd {
     pollfd {
-        fd: fd.as_raw_fd(),
+        fd,
         events: libc::POLLIN,
         revents: 0,
     }
+}
+
+fn remove_client(
+    clients_socket: &mut HashMap<RawFd, ClientSocket>,
+    poll_fds: &mut Vec<pollfd>,
+    fd: RawFd,
+) {
+    clients_socket.remove(&fd);
+    poll_fds.retain(|poll_fd| poll_fd.fd != fd);
 }
