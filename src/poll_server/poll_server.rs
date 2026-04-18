@@ -26,17 +26,25 @@ fn main() -> io::Result<()> {
 
         for pfd in &filtered_fds {
             if pfd.fd == listener.as_raw_fd() {
-                match listener.accept() {
-                    Ok((stream, addr)) => {
-                        println!("Accepted connection from {:?} fd {}", addr, stream.as_raw_fd());
-                        let socket = ClientSocket::accept_new_client(stream)?;
-                        let fd = socket.fd();
-                        let client_fd = create_pool_fd(fd);
-                        poll_fds.push(client_fd);
-                        clients_socket.insert(fd, socket);
-                    }
-                    Err(e) => {
-                        println!("Accept error: {e:?}");
+                loop {
+                    match listener.accept() {
+                        Ok((stream, addr)) => {
+                            println!(
+                                "Accepted connection from {:?} fd {}",
+                                addr,
+                                stream.as_raw_fd()
+                            );
+                            let socket = ClientSocket::accept_new_client(stream)?;
+                            let fd = socket.fd();
+                            let client_fd = create_pool_fd(fd);
+                            poll_fds.push(client_fd);
+                            clients_socket.insert(fd, socket);
+                        }
+                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                        Err(e) => {
+                            println!("Accept error: {e:?}");
+                            break;
+                        }
                     }
                 }
             } else {
@@ -51,11 +59,13 @@ fn main() -> io::Result<()> {
                     Ok(ConnectionStatus::Established) => {}
                     Ok(ConnectionStatus::Closed) => {
                         println!("Client {fd} disconnected");
-                        remove_client(&mut clients_socket, &mut poll_fds, fd);
+                        clients_socket.remove(&fd);
+                        poll_fds.retain(|poll_fd| poll_fd.fd != fd);
                     }
                     Err(e) => {
                         println!("Error reading from client: {} {:?}", fd, e);
-                        remove_client(&mut clients_socket, &mut poll_fds, fd);
+                        clients_socket.remove(&fd);
+                        poll_fds.retain(|poll_fd| poll_fd.fd != fd);
                     }
                 }
             }
@@ -79,13 +89,4 @@ fn create_pool_fd(fd: RawFd) -> pollfd {
         events: libc::POLLIN,
         revents: 0,
     }
-}
-
-fn remove_client(
-    clients_socket: &mut HashMap<RawFd, ClientSocket>,
-    poll_fds: &mut Vec<pollfd>,
-    fd: RawFd,
-) {
-    clients_socket.remove(&fd);
-    poll_fds.retain(|poll_fd| poll_fd.fd != fd);
 }
