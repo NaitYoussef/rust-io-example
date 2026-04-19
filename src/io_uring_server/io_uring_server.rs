@@ -11,11 +11,13 @@ const DISCONNECTED: i32 = 0;
 const OPERATION_ACCEPT: i32 = 1;
 const OPERATION_READ: i32 = 2;
 const OPERATION_WRITE: i32 = 3;
+const OPERATION_CLOSE: i32 = 4;
 
 enum OpType {
     Accept,
     Read(i32),
     Write(i32),
+    Close(i32),
 }
 
 // use a tryFrom implementation to convert from u64 to OpType, externalize OpType in specific module
@@ -29,8 +31,10 @@ impl From<u64> for OpType {
             OpType::Read(fd)
         } else if operation == OPERATION_WRITE {
             OpType::Write(fd)
+        } else if operation == OPERATION_CLOSE {
+            OpType::Close(fd)
         } else {
-            panic!("Unknown operation type for fd: {fd}");
+            panic!("Unknown operation type for fd: {fd} and operation: {operation}");
         }
     }
 }
@@ -41,6 +45,7 @@ impl From<OpType> for u64 {
             OpType::Accept => 1u64 << 32,
             OpType::Read(fd) => (2u64 << 32) | (fd as u32 as u64),
             OpType::Write(fd) => (3u64 << 32) | (fd as u32 as u64),
+            OpType::Close(fd) => (4u64 << 32) | (fd as u32 as u64),
         }
     }
 }
@@ -100,6 +105,10 @@ fn main() -> std::io::Result<()> {
                     println!("Write finished on fd={fd}");
                     submit_read(&mut ring, fd, connections.get_buffer(fd));
                 }
+                OpType::Close(fd) => {
+                    println!("closed on fd={fd}");
+                    connections.disconnect(fd);
+                }
             }
         }
     }
@@ -143,7 +152,8 @@ fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: &mut Vec<u8>) {
 }
 
 fn close_fd(ring: &mut IoUring, client_fd: i32) {
-    let close = opcode::Close::new(types::Fd(client_fd)).build();
+    let close = opcode::Close::new(types::Fd(client_fd)).build()
+        .user_data(u64::from(OpType::Close(client_fd)));
     unsafe {
         ring.submission().push(&close).expect("submission failed");
     }

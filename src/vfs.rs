@@ -1,25 +1,26 @@
+use libc::close as unix_close;
 use libc::read as unix_read;
 use libc::write as unix_write;
 use std::ffi::c_void;
 use std::io;
 use std::net::TcpStream;
-use std::os::fd::{AsRawFd, IntoRawFd, RawFd};
+use std::os::fd::{IntoRawFd, RawFd};
 
 pub enum ConnectionStatus {
     Established,
     Closed,
 }
 
-pub fn accept_new_client(stream: TcpStream) -> io::Result<RawFd> {
+pub fn accept_new_client(stream: TcpStream, message: &str) -> io::Result<RawFd> {
     stream
         .set_nonblocking(true)
         .expect("Failed to set non-blocking mode on the stream");
     let fd = stream.into_raw_fd();
-    write(fd, b"Hello from blocking server\n")?;
+    write(fd, message.as_bytes())?;
     Ok(fd)
 }
 
-pub fn receive_data_and_respond(raw_fd: RawFd) -> io::Result<ConnectionStatus> {
+pub fn receive_data_and_respond(raw_fd: RawFd, message: &str) -> io::Result<ConnectionStatus> {
     let mut buf = [0u8; 1024];
     let read = read(raw_fd, &mut buf);
     match read {
@@ -30,10 +31,7 @@ pub fn receive_data_and_respond(raw_fd: RawFd) -> io::Result<ConnectionStatus> {
                 String::from_utf8_lossy(&buf[..n]).replace('\n', ""),
                 raw_fd
             );
-            write(
-                raw_fd.as_raw_fd(),
-                b"Blocking server received your message !\n",
-            )?;
+            write(raw_fd, message.as_bytes())?;
             Ok(ConnectionStatus::Established)
         }
         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(ConnectionStatus::Established),
@@ -41,6 +39,12 @@ pub fn receive_data_and_respond(raw_fd: RawFd) -> io::Result<ConnectionStatus> {
             println!("Error reading from client 2: {} {:?}", raw_fd, e);
             Err(e)
         }
+    }
+}
+
+pub fn close(fd: RawFd) {
+    unsafe {
+        unix_close(fd);
     }
 }
 

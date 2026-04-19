@@ -1,16 +1,15 @@
 use std::io;
 use std::net::TcpListener;
 
-use rut_io_example::vfs::{
-    accept_new_client, receive_data_and_respond, ConnectionStatus,
-};
+use rut_io_example::vfs::{accept_new_client, close, receive_data_and_respond, ConnectionStatus};
 use std::os::fd::{AsRawFd, RawFd};
 
-fn server_main(listener: TcpListener) -> io::Result<()> {
+fn main() -> io::Result<()> {
+    let listener = TcpListener::bind("0.0.0.0:8000")?;
     println!("Blocking server started!");
     listener.set_nonblocking(true)?;
 
-    let mut clients_socket: Vec<RawFd> = Vec::new();
+    let mut fds: Vec<RawFd> = Vec::new();
 
     loop {
         loop {
@@ -20,8 +19,8 @@ fn server_main(listener: TcpListener) -> io::Result<()> {
                         "Accepted connection from {addr:?} fd {}",
                         stream.as_raw_fd()
                     );
-                    let socket = accept_new_client(stream)?;
-                    clients_socket.push(socket);
+                    let socket = accept_new_client(stream, "Hello from blocking server\n")?;
+                    fds.push(socket);
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
@@ -32,27 +31,23 @@ fn server_main(listener: TcpListener) -> io::Result<()> {
         }
 
         let mut index = 0;
-        while index < clients_socket.len() {
-            let client = clients_socket[index];
-            match receive_data_and_respond(client) {
+        while index < fds.len() {
+            let client = fds[index];
+            match receive_data_and_respond(client, "Blocking server received your message !\n") {
                 Ok(ConnectionStatus::Established) => {
                     index += 1;
                 }
                 Ok(ConnectionStatus::Closed) => {
                     println!("Client {client} disconnected");
-                    clients_socket.swap_remove(index);
+                    let fd = fds.swap_remove(index);
+                    close(fd);
                 }
                 Err(e) => {
                     println!("Error reading from client: {client} {e:?}");
-                    clients_socket.swap_remove(index);
+                    let fd = fds.swap_remove(index);
+                    close(fd);
                 }
             }
         }
     }
-}
-
-fn main() -> io::Result<()> {
-    let listener = TcpListener::bind("0.0.0.0:8000")?;
-    server_main(listener)?;
-    Ok(())
 }

@@ -1,9 +1,8 @@
 use libc::{
-    c_int, close as unix_close, epoll_create1 as unix_epoll_create1, epoll_ctl as unix_epoll_ctl, epoll_event, epoll_wait as unix_epoll_wait,
-    EPOLLET, EPOLLIN, EPOLL_CTL_ADD,
-    EPOLL_CTL_DEL,
+    EPOLL_CTL_ADD, EPOLL_CTL_DEL, EPOLLET, EPOLLIN, c_int, epoll_create1 as unix_epoll_create1,
+    epoll_ctl as unix_epoll_ctl, epoll_event, epoll_wait as unix_epoll_wait,
 };
-use rut_io_example::vfs::{accept_new_client, receive_data_and_respond, ConnectionStatus};
+use rut_io_example::vfs::{ConnectionStatus, accept_new_client, close, receive_data_and_respond};
 use std::io::{self};
 use std::net::TcpListener;
 use std::os::fd::{AsRawFd, RawFd};
@@ -38,7 +37,7 @@ fn main() -> io::Result<()> {
                 loop {
                     match listener.accept() {
                         Ok((stream, addr)) => {
-                            let raw_fd = accept_new_client(stream)?;
+                            let raw_fd = accept_new_client(stream, "Hello from epoll server\n")?;
                             println!("Accepted connection from {addr:?} fd {raw_fd}");
                             let mut ev = epoll_event {
                                 events: (EPOLLIN | EPOLLET) as u32,
@@ -57,7 +56,7 @@ fn main() -> io::Result<()> {
                 }
             } else {
                 // Données à lire sur un client
-                let status = receive_data_and_respond(fd);
+                let status = receive_data_and_respond(fd, "Epoll server received your message !\n");
 
                 match status {
                     Ok(ConnectionStatus::Established) => {}
@@ -74,12 +73,6 @@ fn main() -> io::Result<()> {
                 }
             }
         }
-    }
-}
-
-fn close(fd: RawFd) {
-    unsafe {
-        unix_close(fd);
     }
 }
 
