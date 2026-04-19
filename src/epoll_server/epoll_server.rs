@@ -1,10 +1,9 @@
 use libc::{
-    EPOLL_CTL_ADD, EPOLL_CTL_DEL, EPOLLET, EPOLLIN, c_int, close as unix_close,
-    epoll_create1 as unix_epoll_create1, epoll_ctl as unix_epoll_ctl, epoll_event,
-    epoll_wait as unix_epoll_wait,
+    c_int, close as unix_close, epoll_create1 as unix_epoll_create1, epoll_ctl as unix_epoll_ctl, epoll_event, epoll_wait as unix_epoll_wait,
+    EPOLLET, EPOLLIN, EPOLL_CTL_ADD,
+    EPOLL_CTL_DEL,
 };
-use rut_io_example::vfs::{ClientSocket, ConnectionStatus};
-use std::collections::HashMap;
+use rut_io_example::vfs::{accept_new_client, receive_data_and_respond, ConnectionStatus};
 use std::io::{self};
 use std::net::TcpListener;
 use std::os::fd::{AsRawFd, RawFd};
@@ -24,7 +23,6 @@ fn main() -> io::Result<()> {
 
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, listener.as_raw_fd(), &mut event);
 
-    let mut clients: HashMap<RawFd, ClientSocket> = HashMap::new();
     let mut events = [epoll_event { events: 0, u64: 0 }; 1024];
 
     println!("Server epoll started !");
@@ -40,15 +38,13 @@ fn main() -> io::Result<()> {
                 loop {
                     match listener.accept() {
                         Ok((stream, addr)) => {
-                            let socket = ClientSocket::accept_new_client(stream)?;
-                            let client_fd = socket.fd();
-                            clients.insert(client_fd, socket);
-                            println!("Accepted connection from {addr:?} fd {client_fd}");
+                            let raw_fd = accept_new_client(stream)?;
+                            println!("Accepted connection from {addr:?} fd {raw_fd}");
                             let mut ev = epoll_event {
                                 events: (EPOLLIN | EPOLLET) as u32,
-                                u64: client_fd as u64,
+                                u64: raw_fd as u64,
                             };
-                            epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &mut ev);
+                            epoll_ctl(epoll_fd, EPOLL_CTL_ADD, raw_fd, &mut ev);
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                             break;
@@ -61,23 +57,17 @@ fn main() -> io::Result<()> {
                 }
             } else {
                 // Données à lire sur un client
-                let status = if let Some(client) = clients.get_mut(&fd) {
-                    client.receive_data_and_respond()
-                } else {
-                    continue;
-                };
+                let status = receive_data_and_respond(fd);
 
                 match status {
                     Ok(ConnectionStatus::Established) => {}
                     Ok(ConnectionStatus::Closed) => {
                         println!("Client {fd} disconnected");
-                        clients.remove(&fd);
                         epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, std::ptr::null_mut());
                         close(fd);
                     }
                     Err(e) => {
                         println!("Error reading from client: {} {:?}", fd, e);
-                        clients.remove(&fd);
                         epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, std::ptr::null_mut());
                         close(fd);
                     }

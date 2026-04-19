@@ -1,6 +1,5 @@
 use libc::pollfd;
-use rut_io_example::vfs::{ClientSocket, ConnectionStatus};
-use std::collections::HashMap;
+use rut_io_example::vfs::{accept_new_client, receive_data_and_respond, ConnectionStatus};
 use std::io;
 use std::net::TcpListener;
 use std::os::fd::{AsRawFd, RawFd};
@@ -13,7 +12,6 @@ fn main() -> io::Result<()> {
     // liste des fds stockés dans le programme
     let mut poll_fds = vec![poll_fd];
 
-    let mut clients_socket: HashMap<RawFd, ClientSocket> = HashMap::new();
     println!("Poll server started !");
     loop {
         poll(&mut poll_fds);
@@ -34,11 +32,9 @@ fn main() -> io::Result<()> {
                                 addr,
                                 stream.as_raw_fd()
                             );
-                            let socket = ClientSocket::accept_new_client(stream)?;
-                            let fd = socket.fd();
-                            let client_fd = create_pool_fd(fd);
+                            let raw_fd = accept_new_client(stream)?;
+                            let client_fd = create_pool_fd(raw_fd);
                             poll_fds.push(client_fd);
-                            clients_socket.insert(fd, socket);
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                         Err(e) => {
@@ -49,22 +45,15 @@ fn main() -> io::Result<()> {
                 }
             } else {
                 let fd = pfd.fd.as_raw_fd();
-                let status = if let Some(client) = clients_socket.get_mut(&fd) {
-                    client.receive_data_and_respond()
-                } else {
-                    continue;
-                };
-
+                let status = receive_data_and_respond(fd);
                 match status {
                     Ok(ConnectionStatus::Established) => {}
                     Ok(ConnectionStatus::Closed) => {
                         println!("Client {fd} disconnected");
-                        clients_socket.remove(&fd);
                         poll_fds.retain(|poll_fd| poll_fd.fd != fd);
                     }
                     Err(e) => {
                         println!("Error reading from client: {} {:?}", fd, e);
-                        clients_socket.remove(&fd);
                         poll_fds.retain(|poll_fd| poll_fd.fd != fd);
                     }
                 }
