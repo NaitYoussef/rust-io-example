@@ -89,7 +89,7 @@ fn main() -> std::io::Result<()> {
                     if result == DISCONNECTED {
                         println!("Client {fd} disconnected");
                         connections.disconnect(fd);
-                        close_fd(&mut ring, fd,);
+                        close_fd(&mut ring, fd);
                     } else {
                         connections.receive_data(&fd, result as usize);
                         let greetings = "io_uring server received your message !\n";
@@ -143,10 +143,7 @@ fn submit_read(ring: &mut IoUring, client_fd: i32, buffer: &mut Vec<u8>) {
 }
 
 fn close_fd(ring: &mut IoUring, client_fd: i32) {
-
-    let close = opcode::Close::new(types::Fd(client_fd))
-        .build();
-
+    let close = opcode::Close::new(types::Fd(client_fd)).build();
     unsafe {
         ring.submission().push(&close).expect("submission failed");
     }

@@ -43,7 +43,7 @@ fn server_main(listener: TcpListener) -> io::Result<()> {
                 }
                 Err(e) => {
                     let fd = client.fd();
-                    println!("Error reading from client: {} {:?}", fd, e);
+                    println!("Error reading from client: {fd} {e:?}");
                     clients_socket.swap_remove(index);
                 }
             }
