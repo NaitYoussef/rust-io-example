@@ -158,6 +158,14 @@ Exercice
 Demo
 ===
 <!-- end_slide -->
+
+Analyse des performances
+---
+
+![img.png](images/graph_1.png)
+
+<!-- end_slide -->
+
 API poll, caractéristiques
 ---
 
@@ -201,6 +209,15 @@ KO
 * Enrigistrement des fds côté kernel à chaque appel poll
 
 <!-- end_slide -->
+
+Analyse des performances
+---
+
+![img.png](images/graph_2.png)
+
+<!-- end_slide -->
+
+
 API epoll, caractéristiques
 ---
 
@@ -249,8 +266,18 @@ OK
 
 KO
 
-* Les appels à read et write provequent des copies Userspace <-> Kernelspace
-<!--- end_slide -->
+* Les appels à read et write provoquent des copies Userspace <-> Kernelspace
+
+<!-- end_slide -->
+
+Analyse des performances
+---
+
+![img.png](images/graph_3.png)
+
+<!-- end_slide -->
+
+
 API poll et epoll en java
 ---
 
@@ -350,6 +377,15 @@ API IO uring
 Demo
 ===
 <!-- end_slide -->
+
+Analyse des performances
+---
+
+![img.png](images/graph_4.png)
+
+<!-- end_slide -->
+
+
 Comparatif des performances (select - poll - epoll - kqueue)
 ---
 
