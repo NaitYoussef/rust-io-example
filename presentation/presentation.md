@@ -436,7 +436,7 @@ Merci
 
 <!-- column: 0 -->
 
-![](images/devfest_dijon.png)
+![](images/lien_devoxx.png)
 FeedBack
 <!-- column: 1 -->
 ![](images/lien_presentation.png)
