@@ -90,8 +90,8 @@ cat hello.txt
 ...
 openat(AT_FDCWD, "presentation/demo.txt", O_RDONLY) = 3
 ...
-read(3, "Bonjour Paris JUG", 262144)    = 17
-write(1, "Bonjour Paris JUG", 17Bonjour Paris JUG)       = 17
+read(3, "Hello Devoxx France !!\n", 262144) = 23
+write(1, "Hello Devoxx France !!\n", 23Hello Devoxx France !!) = 23
 read(3, "", 262144)                     = 0
 ...
 close(3)                                = 0
